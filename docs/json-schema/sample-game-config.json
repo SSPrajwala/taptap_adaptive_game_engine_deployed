@@ -1,0 +1,50 @@
+{
+  "gameId": "aptitude-speed-math",
+  "gameType": "aptitude",
+
+  "levels": [
+    {
+      "levelId": "L1",
+      "difficulty": "easy",
+      "timer": 60,
+      "questions": [
+        {
+          "questionId": "Q1",
+          "questionText": "What is 5 + 7?",
+          "options": ["10", "11", "12", "13"],
+          "correctAnswer": "12"
+        },
+        {
+          "questionId": "Q2",
+          "questionText": "What is 9 - 3?",
+          "options": ["5", "6", "7", "8"],
+          "correctAnswer": "6"
+        }
+      ]
+    },
+    {
+      "levelId": "L2",
+      "difficulty": "medium",
+      "timer": 45,
+      "questions": [
+        {
+          "questionId": "Q3",
+          "questionText": "What is 15 × 2?",
+          "options": ["25", "30", "35", "40"],
+          "correctAnswer": "30"
+        }
+      ]
+    }
+  ],
+
+  "scoring": {
+    "basePoints": 100,
+    "timeBonus": 5,
+    "accuracyWeight": 1.5
+  },
+
+  "adaptiveRules": {
+    "skipThreshold": 80,
+    "repeatThreshold": 50
+  }
+}
