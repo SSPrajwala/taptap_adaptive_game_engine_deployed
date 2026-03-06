@@ -1,34 +1,40 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import "./App.css"
+import { EngineCore } from "./engine/EngineCore"
+import type { EngineResult } from "./engine/EngineTypes"
+
+const sampleGame = {
+  gameName: "Logical Reasoning Challenge",
+  levels: [
+    { levelId: 1, difficulty: "easy", timeLimit: 60 },
+    { levelId: 2, difficulty: "medium", timeLimit: 45 },
+    { levelId: 3, difficulty: "hard", timeLimit: 30 }
+  ]
+}
+
+const metrics = {
+  accuracy: 85,
+  responseTime: 40,
+  attempts: 1
+}
 
 function App() {
-  const [count, setCount] = useState(0)
+
+  const result: EngineResult = EngineCore.run(sampleGame, metrics)
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div style={{ textAlign: "center", marginTop: "60px" }}>
+
+      <h1>TapTap Adaptive Game Engine</h1>
+
+      <h2>Game: {result.game}</h2>
+
+      <h3>Level: {result.level}</h3>
+
+      <h3>Decision: {result.decision}</h3>
+
+      <h3>Score: {result.score}</h3>
+
+    </div>
   )
 }
 
