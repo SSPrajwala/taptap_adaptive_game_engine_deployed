@@ -1,15 +1,7 @@
 import "./App.css"
 import { EngineCore } from "./engine/EngineCore"
 import type { EngineResult } from "./engine/EngineTypes"
-
-const sampleGame = {
-  gameName: "Logical Reasoning Challenge",
-  levels: [
-    { levelId: 1, difficulty: "easy", timeLimit: 60 },
-    { levelId: 2, difficulty: "medium", timeLimit: 45 },
-    { levelId: 3, difficulty: "hard", timeLimit: 30 }
-  ]
-}
+import gameConfig from "./games/logic-game.json"
 
 const metrics = {
   accuracy: 85,
@@ -19,7 +11,7 @@ const metrics = {
 
 function App() {
 
-  const result: EngineResult = EngineCore.run(sampleGame, metrics)
+  const result: EngineResult = EngineCore.run(gameConfig, metrics)
 
   return (
     <div style={{ textAlign: "center", marginTop: "60px" }}>

@@ -6,6 +6,7 @@ export interface LevelConfig {
 
 export interface GameConfig {
   gameName: string
+  plugin: string
   levels: LevelConfig[]
 }
 

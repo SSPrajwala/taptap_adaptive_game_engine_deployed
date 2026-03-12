@@ -1,0 +1,21 @@
+{
+  "gameName": "Logical Reasoning Challenge",
+  "plugin": "quiz",
+  "levels": [
+    {
+      "levelId": 1,
+      "difficulty": "easy",
+      "timeLimit": 60
+    },
+    {
+      "levelId": 2,
+      "difficulty": "medium",
+      "timeLimit": 45
+    },
+    {
+      "levelId": 3,
+      "difficulty": "hard",
+      "timeLimit": 30
+    }
+  ]
+}
