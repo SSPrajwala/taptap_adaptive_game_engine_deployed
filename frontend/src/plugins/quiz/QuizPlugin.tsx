@@ -119,8 +119,8 @@ const QuizComponent: React.FC<PluginRenderProps<QuizQuestion>> = ({
           }
           return (
             <button key={i} className={cls} onClick={() => handleSelect(i)} disabled={revealed}>
-              <span className="opt-letter">{String.fromCharCode(65 + i)}</span>
-              <span className="opt-text">{opt}</span>
+                <span className="opt-letter">{String.fromCharCode(65 + i)}</span>
+                <span className="opt-text">{opt}</span>
             </button>
           )
         })}

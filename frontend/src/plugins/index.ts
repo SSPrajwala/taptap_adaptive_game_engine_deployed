@@ -1,15 +1,12 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// plugins/index.ts  — the ONLY file that imports and registers plugins.
-//
-// GameRenderer and App.tsx never import plugins directly.
-// Adding a new game type = add one line here + create the plugin file.
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { pluginRegistry } from "../engine/PluginRegistry"
-import { QuizPlugin }     from "./quiz/QuizPlugin"
-import { PuzzlePlugin }   from "./puzzle/PuzzlePlugin"
+import { QuizPlugin }      from "./quiz/QuizPlugin"
+import { PuzzlePlugin }    from "./puzzle/PuzzlePlugin"
+import { FlashcardPlugin } from "./flashcard/FlashcardPlugin"
+import { MemoryPlugin }    from "./memory/MemoryPlugin"
 
 pluginRegistry.register(QuizPlugin)
 pluginRegistry.register(PuzzlePlugin)
+pluginRegistry.register(FlashcardPlugin)
+pluginRegistry.register(MemoryPlugin)
 
 export { pluginRegistry }

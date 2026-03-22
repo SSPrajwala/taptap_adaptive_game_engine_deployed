@@ -1,78 +1,103 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// App.tsx
-//
-// OLD App.tsx had:
-//   - useState for levelIndex, currentQuestion, feedback, decision, score, timeLeft
-//   - useEffect for timer (reset only on levelIndex — buggy per-question)
-//   - handleAnswer: 40+ lines of game logic
-//   - Direct imports of QuestionEngine, PlayerState, EngineCore, AnalyticsEngine
-//   - if (result.decision === "NEXT") string comparison
-//   - Manual QuestionEngine.reset() and index management
-//
-// NEW App.tsx has:
-//   - Zero game logic
-//   - Zero engine imports (only types + GameRenderer)
-//   - Just: pick a game → render GameRenderer with that config
-//
-// To add a new game: import its JSON, add to GAMES. Done.
-// ─────────────────────────────────────────────────────────────────────────────
-
 import React, { useState } from "react"
 import { GameRenderer }   from "./components/GameRenderer"
+import { LeaderboardPage } from "./pages/LeaderboardPage"
+import { AdminPanel }      from "./pages/AdminPanel"
 import type { GameConfig } from "./types/engine.types"
 
-import logicGame    from "./games/logic-game.json"
-// import puzzleGame from "./games/pattern-puzzle.json"   ← add future games here
-import patternPuzzle from "./games/pattern-puzzle.json"
+import logicGameRaw      from "./games/logic-game.json"
+import patternPuzzleRaw  from "./games/pattern-puzzle.json"
+import worldCapitalsRaw  from "./games/world-capitals.json"
+import emojiMemoryRaw    from "./games/emoji-memory.json"
 
-
-
-// Side-effect import: registers all plugins into pluginRegistry
 import "./plugins"
 import "./styles.css"
 
-const GAMES = [
-  logicGame as unknown as GameConfig,
-  // puzzleGame as unknown as GameConfig,
-   patternPuzzle as unknown as GameConfig,
-]
+type Page = "library" | "game" | "leaderboard" | "admin"
+
+const PLUGIN_COLORS: Record<string, string> = {
+  quiz:      "var(--accent)",
+  puzzle:    "#22d3ee",
+  flashcard: "#a78bfa",
+  memory:    "#34d399",
+}
 
 export default function App() {
-  const [active, setActive] = useState<GameConfig | null>(null)
+  const [games, setGames] = useState<GameConfig[]>([
+    logicGameRaw     as unknown as GameConfig,
+    patternPuzzleRaw as unknown as GameConfig,
+    worldCapitalsRaw as unknown as GameConfig,
+    emojiMemoryRaw   as unknown as GameConfig,
+  ])
 
-  if (active) {
-    return (
-      <div className="app-shell">
-        <button className="back-btn" onClick={() => setActive(null)}>
-          ← Library
-        </button>
-        <GameRenderer config={active} />
-      </div>
-    )
+  const [page, setPage]         = useState<Page>("library")
+  const [activeGame, setActiveGame] = useState<GameConfig | null>(null)
+
+  const handlePlayGame = (game: GameConfig) => {
+    setActiveGame(game)
+    setPage("game")
   }
 
+  const handleAdminSave = (updated: GameConfig[]) => {
+    setGames(updated)
+  }
+
+  // ── Game page ──────────────────────────────────────────────────────────────
+  if (page === "game" && activeGame) {
+    return <div className="app-shell"><GameRenderer config={activeGame} onBack={() => setPage("library")} /></div>
+  }
+
+  // ── Leaderboard ────────────────────────────────────────────────────────────
+  if (page === "leaderboard") {
+    return <div className="app-shell"><LeaderboardPage onBack={() => setPage("library")} /></div>
+  }
+
+  // ── Admin panel ────────────────────────────────────────────────────────────
+  if (page === "admin") {
+    return <div className="app-shell"><AdminPanel games={games} onBack={() => setPage("library")} onSave={handleAdminSave} /></div>
+  }
+
+  // ── Library ────────────────────────────────────────────────────────────────
   return (
     <div className="app-shell">
       <header className="app-header">
         <div className="app-logo">⚡</div>
-        <h1>TapTap Adaptive Engine</h1>
-        <p>JSON-driven · Plugin-based · Adaptive difficulty</p>
+        <h1>TapTap Engine</h1>
+        <p>Adaptive · Plugin-based · JSON-driven</p>
       </header>
 
+      {/* Nav bar */}
+      <nav className="app-nav">
+        <button className="nav-btn nav-btn-active">🎮 Games</button>
+        <button className="nav-btn" onClick={() => setPage("leaderboard")}>🏆 Leaderboard</button>
+        <button className="nav-btn" onClick={() => setPage("admin")}>⚙️ Admin</button>
+      </nav>
+
+      {/* Game library */}
       <div className="game-library">
-        {GAMES.map(game => (
-          <div key={game.id} className="game-card" onClick={() => setActive(game)}>
-            <div className="card-plugin-id">{game.plugin}</div>
-            <h2 className="card-title">{game.title}</h2>
-            <p  className="card-desc">{game.description}</p>
-            <div className="card-meta">
-              <span>{game.levels.length} levels</span>
-              <span>{game.questions.length} questions</span>
+        {games.map(game => (
+          <div key={game.id} className="game-card" onClick={() => handlePlayGame(game)}
+            style={{ "--card-accent": PLUGIN_COLORS[game.plugin] ?? "var(--accent)" } as React.CSSProperties}>
+            <div className="card-top">
+              <span className="card-emoji">{game.ui?.emoji ?? "🎮"}</span>
+              <span className="card-plugin-tag" style={{ color: PLUGIN_COLORS[game.plugin] ?? "var(--accent)" }}>{game.plugin}</span>
             </div>
-            <button className="btn-primary btn-sm">Play →</button>
+            <h2 className="card-title">{game.title}</h2>
+            <p className="card-desc">{game.description}</p>
+            <div className="card-footer">
+              <div className="card-meta">
+                <span>📚 {game.levels.length} levels</span>
+                <span>❓ {game.questions.length} questions</span>
+              </div>
+              <button className="btn-play">Play →</button>
+            </div>
           </div>
         ))}
       </div>
+
+      <footer className="app-footer">
+        <span>TapTap Adaptive Game Engine</span>
+        <span>{games.length} games · {games.reduce((s, g) => s + g.questions.length, 0)} questions</span>
+      </footer>
     </div>
   )
 }
