@@ -1,5 +1,5 @@
 export type Difficulty = "easy" | "medium" | "hard"
-export type PluginId = "quiz" | "puzzle" | "flashcard" | "memory" | string
+export type PluginId = "quiz" | "puzzle" | "flashcard" | "memory" | "sudoku" | "wordbuilder" | string
 
 export interface BaseQuestion {
   id: string
@@ -38,7 +38,36 @@ export interface MemoryQuestion extends BaseQuestion {
   instruction: string
 }
 
-export type Question = QuizQuestion | PuzzleQuestion | FlashcardQuestion | MemoryQuestion
+// ── Sudoku ────────────────────────────────────────────────────────────────────
+// board: 81-char string, 0 = empty cell, 1-9 = given digits
+// solution: 81-char string with full solution
+export interface SudokuQuestion extends BaseQuestion {
+  type: "sudoku"
+  board: string
+  solution: string
+  instruction: string
+}
+
+// ── Word Builder ──────────────────────────────────────────────────────────────
+// letters: shuffled letters the player uses to build words
+// validWords: all accepted answers (player needs to find targetCount of them)
+// targetCount: minimum words player must find to pass
+export interface WordBuilderQuestion extends BaseQuestion {
+  type: "wordbuilder"
+  letters: string[]
+  validWords: string[]
+  targetCount: number
+  instruction: string
+  bonusWords?: string[]   // extra hard words worth bonus points
+}
+
+export type Question =
+  | QuizQuestion
+  | PuzzleQuestion
+  | FlashcardQuestion
+  | MemoryQuestion
+  | SudokuQuestion
+  | WordBuilderQuestion
 
 export interface Level {
   id: string
@@ -148,15 +177,13 @@ export type EngineAction =
   | { type: "RESTART" }
 
 export type EngineEvent =
-  | { type: "ANSWER_SUBMITTED"; payload: AnswerResult }
-  | { type: "LEVEL_COMPLETE"; payload: { levelId: string; score: number; passed: boolean } }
+  | { type: "ANSWER_SUBMITTED";   payload: AnswerResult }
+  | { type: "LEVEL_COMPLETE";     payload: { levelId: string; score: number; passed: boolean } }
   | { type: "DIFFICULTY_CHANGED"; payload: { from: Difficulty; to: Difficulty } }
-  | { type: "HINT_REQUESTED"; payload: { questionId: string } }
-  | { type: "GAME_OVER"; payload: { finalScore: number; accuracy: number } }
+  | { type: "HINT_REQUESTED";     payload: { questionId: string } }
+  | { type: "GAME_OVER";          payload: { finalScore: number; accuracy: number } }
 
 export type EngineEventListener = (event: EngineEvent) => void
-
-// ── Leaderboard ───────────────────────────────────────────────────────────────
 
 export interface LeaderboardEntry {
   id: string
@@ -166,6 +193,7 @@ export interface LeaderboardEntry {
   score: number
   accuracy: number
   totalAnswered: number
+  timeTaken: number        // total seconds for the game session
   difficulty: Difficulty
   timestamp: number
 }
