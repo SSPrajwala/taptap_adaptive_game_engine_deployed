@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react"
+/* eslint-disable react-refresh/only-export-components */
+import React, { useState, useRef } from "react"
 import type {
   GamePlugin,
   PluginRenderProps,
@@ -18,12 +19,7 @@ const PuzzleComponent: React.FC<PluginRenderProps<PuzzleQuestion>> = ({
   const [correct,   setCorrect]   = useState<boolean | null>(null)
   const submittedRef = useRef(false)
 
-  useEffect(() => {
-    setInputs(Array(question.sequenceLength).fill(""))
-    setSubmitted(false)
-    setCorrect(null)
-    submittedRef.current = false
-  }, [question.id, question.sequenceLength])
+  // No reset effect needed — GameRenderer remounts this component via key={questionId}
 
   // Derive expected answers from the arithmetic pattern
   const expected = (): number[] => {

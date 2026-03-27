@@ -1929,6 +1929,22 @@ body::after {
 ::-webkit-scrollbar-thumb { background: rgba(168,85,247,0.4); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(168,85,247,0.7); }
 
+/* ── SIDE OVERLAY ANIMATIONS ───────────────────────────────────────────────── */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInCenter {
+  from { transform: translate(-50%,-50%) scale(0.92); opacity: 0; }
+  to   { transform: translate(-50%,-50%) scale(1);    opacity: 1; }
+}
+
 /* ── RESPONSIVE ────────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
   .app-header h1 { font-size: 1.5rem; }

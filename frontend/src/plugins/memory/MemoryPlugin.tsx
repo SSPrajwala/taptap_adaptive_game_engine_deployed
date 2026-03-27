@@ -1,25 +1,32 @@
-import React, { useState, useEffect, useRef } from "react"
+/* eslint-disable react-refresh/only-export-components */
+import React, { useState, useRef } from "react"
 import type { GamePlugin, PluginRenderProps, MemoryQuestion, Question } from "../../types/engine.types"
+
 interface CardState { id: string; pairId: string; label: string; emoji: string; flipped: boolean; matched: boolean }
 
+// Builds and shuffles a deck from pairs. Called once via useState lazy initializer
+// (component is remounted per question via key={questionId} in GameRenderer).
+function buildDeck(pairs: MemoryQuestion["pairs"]): CardState[] {
+  const deck: CardState[] = []
+  pairs.forEach(pair => {
+    deck.push({ id: `${pair.id}-a`, pairId: pair.id, label: pair.label, emoji: pair.emoji, flipped: false, matched: false })
+    deck.push({ id: `${pair.id}-b`, pairId: pair.id, label: pair.label, emoji: pair.emoji, flipped: false, matched: false })
+  })
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[deck[i], deck[j]] = [deck[j], deck[i]]
+  }
+  return deck
+}
+
 const MemoryComponent: React.FC<PluginRenderProps<MemoryQuestion>> = ({ question, onAnswer }) => {
-  const [cards, setCards] = useState<CardState[]>([])
+  // useState lazy initializer: runs once on mount. GameRenderer uses key={questionId}
+  // to remount this component fresh for every new question — no reset effect needed.
+  const [cards, setCards] = useState<CardState[]>(() => buildDeck(question.pairs))
   const [selected, setSelected] = useState<string[]>([])
   const [moves, setMoves] = useState(0)
   const [done, setDone] = useState(false)
   const lockRef = useRef(false)
-
-  useEffect(() => {
-    // Build pairs: each pair becomes 2 cards (label card + emoji card)
-    const deck: CardState[] = []
-    question.pairs.forEach(pair => {
-      deck.push({ id: `${pair.id}-a`, pairId: pair.id, label: pair.label, emoji: pair.emoji, flipped: false, matched: false })
-      deck.push({ id: `${pair.id}-b`, pairId: pair.id, label: pair.label, emoji: pair.emoji, flipped: false, matched: false })
-    })
-    // Shuffle
-    for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[deck[i], deck[j]] = [deck[j], deck[i]] }
-    setCards(deck); setSelected([]); setMoves(0); setDone(false); lockRef.current = false
-  }, [question.id])
 
   const handleFlip = (cardId: string) => {
     if (lockRef.current || done) return

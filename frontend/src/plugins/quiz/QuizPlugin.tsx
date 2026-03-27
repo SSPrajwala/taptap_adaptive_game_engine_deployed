@@ -12,7 +12,8 @@
 //     All game state (score, streak, progression) stays in the engine reducer.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useEffect, useRef } from "react"
+/* eslint-disable react-refresh/only-export-components */
+import React, { useState, useRef } from "react"
 import type {
   GamePlugin,
   PluginRenderProps,
@@ -35,13 +36,6 @@ const QuizComponent: React.FC<PluginRenderProps<QuizQuestion>> = ({
   const [selected,  setSelected]  = useState<number | null>(null)
   const [revealed,  setRevealed]  = useState(false)
   const submittedRef = useRef(false)
-
-  // Reset local UI state when question changes
-  useEffect(() => {
-    setSelected(null)
-    setRevealed(false)
-    submittedRef.current = false
-  }, [question.id])
 
   const handleSelect = (index: number) => {
     if (revealed || submittedRef.current) return

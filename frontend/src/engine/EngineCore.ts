@@ -168,7 +168,7 @@ export class EngineCore {
           return { ...state, status: "gameOver" }
         }
 
-        const nextDiff  = this.adaptive.nextDifficulty(state.stats.difficulty, state.stats.accuracy, this.config)
+        const nextDiff  = this.adaptive.nextDifficulty(state.stats.difficulty, state.stats.accuracy)
         const questions = this.adaptive.selectQuestions(this.config.questions, nextLevel.questionIds, nextDiff)
 
         return {

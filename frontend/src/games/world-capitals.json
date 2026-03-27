@@ -5,22 +5,158 @@
   "plugin": "flashcard",
   "version": "1.0.0",
   "questions": [
-    { "id": "fc1", "type": "flashcard", "difficulty": "easy", "points": 50, "front": "France", "back": "Paris", "category": "Europe" },
-    { "id": "fc2", "type": "flashcard", "difficulty": "easy", "points": 50, "front": "Germany", "back": "Berlin", "category": "Europe" },
-    { "id": "fc3", "type": "flashcard", "difficulty": "easy", "points": 50, "front": "Japan", "back": "Tokyo", "category": "Asia" },
-    { "id": "fc4", "type": "flashcard", "difficulty": "easy", "points": 50, "front": "Brazil", "back": "Brasília", "category": "Americas" },
-    { "id": "fc5", "type": "flashcard", "difficulty": "medium", "points": 100, "front": "Australia", "back": "Canberra", "category": "Oceania", "hint": "Not Sydney!" },
-    { "id": "fc6", "type": "flashcard", "difficulty": "medium", "points": 100, "front": "Canada", "back": "Ottawa", "category": "Americas", "hint": "Not Toronto!" },
-    { "id": "fc7", "type": "flashcard", "difficulty": "medium", "points": 100, "front": "South Africa", "back": "Pretoria (executive)", "category": "Africa" },
-    { "id": "fc8", "type": "flashcard", "difficulty": "hard", "points": 200, "front": "Kazakhstan", "back": "Astana", "category": "Asia" },
-    { "id": "fc9", "type": "flashcard", "difficulty": "hard", "points": 200, "front": "Myanmar", "back": "Naypyidaw", "category": "Asia" }
+    {
+      "id": "fc1",
+      "type": "flashcard",
+      "difficulty": "easy",
+      "points": 50,
+      "front": "France",
+      "back": "Paris",
+      "category": "Europe"
+    },
+    {
+      "id": "fc2",
+      "type": "flashcard",
+      "difficulty": "easy",
+      "points": 50,
+      "front": "Germany",
+      "back": "Berlin",
+      "category": "Europe"
+    },
+    {
+      "id": "fc3",
+      "type": "flashcard",
+      "difficulty": "easy",
+      "points": 50,
+      "front": "Japan",
+      "back": "Tokyo",
+      "category": "Asia"
+    },
+    {
+      "id": "fc4",
+      "type": "flashcard",
+      "difficulty": "easy",
+      "points": 50,
+      "front": "Brazil",
+      "back": "Brasília",
+      "category": "Americas"
+    },
+    {
+      "id": "fc5",
+      "type": "flashcard",
+      "difficulty": "medium",
+      "points": 100,
+      "front": "Australia",
+      "back": "Canberra",
+      "category": "Oceania",
+      "hint": "Not Sydney!"
+    },
+    {
+      "id": "fc6",
+      "type": "flashcard",
+      "difficulty": "medium",
+      "points": 100,
+      "front": "Canada",
+      "back": "Ottawa",
+      "category": "Americas",
+      "hint": "Not Toronto!"
+    },
+    {
+      "id": "fc7",
+      "type": "flashcard",
+      "difficulty": "medium",
+      "points": 100,
+      "front": "South Africa",
+      "back": "Pretoria (executive)",
+      "category": "Africa"
+    },
+    {
+      "id": "fc8",
+      "type": "flashcard",
+      "difficulty": "hard",
+      "points": 200,
+      "front": "Kazakhstan",
+      "back": "Astana",
+      "category": "Asia"
+    },
+    {
+      "id": "fc9",
+      "type": "flashcard",
+      "difficulty": "hard",
+      "points": 200,
+      "front": "Myanmar",
+      "back": "Naypyidaw",
+      "category": "Asia"
+    },
+    {
+      "id": "fc-997b7eda-40e4-4ef2-bbb7-30660b111b5c",
+      "type": "flashcard",
+      "difficulty": "easy",
+      "points": 50,
+      "timeLimit": 30,
+      "front": "South Africa",
+      "back": "Cape Town",
+      "category": "Africa",
+      "hint": "The tip of Africa"
+    }
   ],
   "levels": [
-    { "id": "fc-l1", "title": "Easy Capitals", "description": "Well-known capitals.", "questionIds": ["fc1","fc2","fc3","fc4"], "passingScore": 50 },
-    { "id": "fc-l2", "title": "Tricky Capitals", "description": "Capitals that surprise people.", "questionIds": ["fc5","fc6","fc7"], "passingScore": 50, "unlockCondition": { "previousLevelId": "fc-l1", "minScore": 40 } },
-    { "id": "fc-l3", "title": "Expert Capitals", "description": "Obscure and recent capitals.", "questionIds": ["fc8","fc9"], "passingScore": 60, "unlockCondition": { "previousLevelId": "fc-l2", "minScore": 50 } }
+    {
+      "id": "fc-l1",
+      "title": "Easy Capitals",
+      "description": "Well-known capitals.",
+      "questionIds": [
+        "fc1",
+        "fc2",
+        "fc3",
+        "fc4",
+        "fc-997b7eda-40e4-4ef2-bbb7-30660b111b5c"
+      ],
+      "passingScore": 50
+    },
+    {
+      "id": "fc-l2",
+      "title": "Tricky Capitals",
+      "description": "Capitals that surprise people.",
+      "questionIds": [
+        "fc5",
+        "fc6",
+        "fc7"
+      ],
+      "passingScore": 50,
+      "unlockCondition": {
+        "previousLevelId": "fc-l1",
+        "minScore": 40
+      }
+    },
+    {
+      "id": "fc-l3",
+      "title": "Expert Capitals",
+      "description": "Obscure and recent capitals.",
+      "questionIds": [
+        "fc8",
+        "fc9"
+      ],
+      "passingScore": 60,
+      "unlockCondition": {
+        "previousLevelId": "fc-l2",
+        "minScore": 50
+      }
+    }
   ],
   "adaptiveRules": [],
-  "scoring": { "basePoints": 50, "timeBonus": false, "timeBonusPerSecond": 0, "streakMultiplier": true, "streakThreshold": 3, "streakMultiplierValue": 1.5 },
-  "ui": { "showTimer": false, "showProgress": true, "showStreak": true, "emoji": "🗺️" }
+  "scoring": {
+    "basePoints": 50,
+    "timeBonus": false,
+    "timeBonusPerSecond": 0,
+    "streakMultiplier": true,
+    "streakThreshold": 3,
+    "streakMultiplierValue": 1.5
+  },
+  "ui": {
+    "showTimer": false,
+    "showProgress": true,
+    "showStreak": true,
+    "emoji": "🗺️"
+  }
 }

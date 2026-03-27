@@ -3,17 +3,39 @@ import type { GameConfig, AnswerResult, Question } from "../types/engine.types"
 import { pluginRegistry }     from "../plugins"
 import { useGameEngine }      from "../hooks/useGameEngine"
 import { LeaderboardService } from "../engine/LeaderboardService"
+import { Confetti }           from "./ui/Confetti"
+import { useAuth }            from "../context/AuthContext"
 
-interface Props { config: GameConfig; onBack: () => void }
+interface Props {
+  config:       GameConfig
+  onBack:       () => void
+  onCorrect?:   () => void
+  onWrong?:     () => void
+  onVictory?:   () => void
+}
 
-export const GameRenderer: React.FC<Props> = ({ config, onBack }) => {
+export const GameRenderer: React.FC<Props> = ({ config, onBack, onCorrect, onWrong, onVictory }) => {
   const {
-    state, currentQuestion, lastResult,
+    state, engine, currentQuestion, lastResult,
     isShowingHint, timeRemaining,
     handleAnswer, handleHint, send,
   } = useGameEngine(config)
 
-  const [playerName, setPlayerName] = useState("")
+  const { user, token } = useAuth()
+
+  // ── Deer mascot + victory reactions ──────────────────────────────────────────
+  useEffect(() => engine.on(event => {
+    if (event.type === "ANSWER_SUBMITTED") {
+      if (event.payload.correct) onCorrect?.()
+      else                       onWrong?.()
+    }
+    if (event.type === "GAME_OVER" || event.type === "LEVEL_COMPLETE") {
+      onVictory?.()
+    }
+  }), [engine, onCorrect, onWrong, onVictory])
+
+  // Pre-fill name from logged-in user
+  const [playerName, setPlayerName] = useState(user?.name ?? "")
   const [scoreSaved, setScoreSaved] = useState(false)
   const [apiStatus,  setApiStatus]  = useState<string | null>(null)
   const [saving,     setSaving]     = useState(false)
@@ -61,7 +83,7 @@ export const GameRenderer: React.FC<Props> = ({ config, onBack }) => {
       timeTaken,
       difficulty:    state.stats.difficulty,
     })
-    const result = await LeaderboardService.submitToAPI(entry)
+    const result = await LeaderboardService.submitToAPI(entry, token)
     setApiStatus(result.message)
     setScoreSaved(true)
     setSaving(false)
@@ -106,6 +128,7 @@ export const GameRenderer: React.FC<Props> = ({ config, onBack }) => {
     const nextLevel = config.levels[config.levels.findIndex(l => l.id === state.currentLevelId) + 1]
     return (
       <div className="screen screen-complete">
+        <Confetti active count={40} />
         <div className="complete-ring">✓</div>
         <h2>Level Complete!</h2>
         <p className="complete-level-name">{currentLevel?.title}</p>
@@ -128,6 +151,7 @@ export const GameRenderer: React.FC<Props> = ({ config, onBack }) => {
     const rank = LeaderboardService.getRank(state.stats.score, timeTaken)
     return (
       <div className="screen screen-gameover">
+        <Confetti active count={60} />
         <div className="gameover-trophy">🏆</div>
         <h2>Game Complete!</h2>
         <div className="final-score-display">
@@ -214,7 +238,10 @@ export const GameRenderer: React.FC<Props> = ({ config, onBack }) => {
         </div>
       )}
       <div className="gr-plugin-area">
+        {/* key=currentQuestionId remounts the plugin on every new question,
+            which resets all local state without needing useEffect resets in plugins */}
         <PluginComponent
+          key={state.currentQuestionId}
           question={currentQuestion}
           stats={state.stats}
           config={config}

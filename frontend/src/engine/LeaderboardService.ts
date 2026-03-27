@@ -2,7 +2,7 @@ import type { LeaderboardEntry } from "../types/engine.types"
 
 const KEY     = "taptap_leaderboard_v2"
 const MAX     = 100
-const API_URL = "https://jsonplaceholder.typicode.com/posts" // mock API endpoint
+const API_URL = "http://localhost:3001/api/leaderboard"
 
 export class LeaderboardService {
 
@@ -23,7 +23,6 @@ export class LeaderboardService {
     }
     const all = this.getAll()
     all.push(full)
-    // Sort: primary = score descending, tiebreaker = timeTaken ascending (faster is better)
     all.sort((a, b) => b.score - a.score || a.timeTaken - b.timeTaken)
     localStorage.setItem(KEY, JSON.stringify(all.slice(0, MAX)))
     return full
@@ -53,38 +52,98 @@ export class LeaderboardService {
     localStorage.removeItem(KEY)
   }
 
-  // ── Mock API submit ────────────────────────────────────────────────────────
-  // Submits score to a mock REST API to satisfy the "submit scores to leaderboard API"
-  // requirement. Replace API_URL with your real backend endpoint when available.
+  // ── Real backend submit ────────────────────────────────────────────────────
+  // Posts score to the TapTap backend (localhost:3001).
+  // Falls back gracefully if the backend is not running.
 
-  static async submitToAPI(entry: LeaderboardEntry): Promise<{ success: boolean; message: string }> {
+  static async submitToAPI(
+    entry: LeaderboardEntry,
+    authToken?: string | null,
+  ): Promise<{ success: boolean; message: string; rank?: number }> {
     try {
-      const payload = {
-        title:   `${entry.playerName} scored ${entry.score} on ${entry.gameTitle}`,
-        body:    JSON.stringify({
-          player:      entry.playerName,
-          game:        entry.gameTitle,
-          score:       entry.score,
-          accuracy:    Math.round(entry.accuracy * 100),
-          timeTaken:   entry.timeTaken,
-          difficulty:  entry.difficulty,
-          timestamp:   new Date(entry.timestamp).toISOString(),
-        }),
-        userId: 1,
-      }
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (authToken) headers["Authorization"] = `Bearer ${authToken}`
 
-      const res = await fetch(API_URL, {
+      const res = await fetch(`${API_URL}/submit`, {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
+        headers,
+        body:    JSON.stringify({
+          playerName: entry.playerName,
+          gameId:     entry.gameId,
+          gameTitle:  entry.gameTitle,
+          score:      entry.score,
+          accuracy:   entry.accuracy,
+          timeTaken:  entry.timeTaken,
+          difficulty: entry.difficulty,
+          timestamp:  entry.timestamp,
+        }),
       })
 
-      if (!res.ok) throw new Error(`API responded with ${res.status}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      return {
+        success: true,
+        message: `Score submitted! Your rank: #${data.rank ?? "?"}`,
+        rank:    data.rank,
+      }
+    } catch {
+      return { success: false, message: "Backend unavailable — score saved locally." }
+    }
+  }
 
-      return { success: true, message: "Score submitted to leaderboard API!" }
-    } catch (err) {
-      // Graceful fallback — local save still works
-      return { success: false, message: "API unavailable — score saved locally." }
+  // ── Fetch global leaderboard from backend ──────────────────────────────────
+  // Returns backend data, falls back to localStorage on failure.
+
+  static async fetchGlobal(): Promise<LeaderboardEntry[]> {
+    try {
+      const res = await fetch(API_URL, { signal: AbortSignal.timeout(4000) })
+      if (!res.ok) throw new Error("not ok")
+      const data: Array<{
+        id: string; playerName: string; gameId: string; gameTitle: string
+        score: number; accuracy: number; timeTaken: number; difficulty: string; timestamp: number
+      }> = await res.json()
+      return data.map(d => ({
+        id:         d.id,
+        playerName: d.playerName,
+        gameId:     d.gameId,
+        gameTitle:  d.gameTitle,
+        score:      d.score,
+        accuracy:   d.accuracy,
+        timeTaken:  d.timeTaken,
+        difficulty: d.difficulty as "easy" | "medium" | "hard",
+        timestamp:  d.timestamp,
+      }))
+    } catch {
+      // Fall back to localStorage
+      return this.getGlobal()
+    }
+  }
+
+  // ── Fetch per-game leaderboard from backend ────────────────────────────────
+
+  static async fetchForGame(gameId: string): Promise<LeaderboardEntry[]> {
+    try {
+      const res = await fetch(`${API_URL}/${encodeURIComponent(gameId)}`, {
+        signal: AbortSignal.timeout(4000),
+      })
+      if (!res.ok) throw new Error("not ok")
+      const data: Array<{
+        id: string; playerName: string; gameId: string; gameTitle: string
+        score: number; accuracy: number; timeTaken: number; difficulty: string; timestamp: number
+      }> = await res.json()
+      return data.map(d => ({
+        id:         d.id,
+        playerName: d.playerName,
+        gameId:     d.gameId,
+        gameTitle:  d.gameTitle,
+        score:      d.score,
+        accuracy:   d.accuracy,
+        timeTaken:  d.timeTaken,
+        difficulty: d.difficulty as "easy" | "medium" | "hard",
+        timestamp:  d.timestamp,
+      }))
+    } catch {
+      return this.getForGame(gameId)
     }
   }
 }

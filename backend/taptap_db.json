@@ -1,0 +1,21 @@
+{
+  "users": [
+    {
+      "id": "7b128199-a7a2-4f6b-84b0-291e18661c12",
+      "name": "SSP",
+      "email": "ssp@gmail.com",
+      "passwordHash": "$2a$10$2Imwv3VcKapnp9KkI/rZwu05BIOPWyw1T0anDL7w7rYRWMin63Q8S",
+      "college": "KITSW",
+      "createdAt": 1774637806601
+    }
+  ],
+  "scores": [],
+  "admins": [
+    {
+      "id": "admin_001",
+      "name": "Engine Owner",
+      "accessCode": "TAPTAP-ADMIN-2024",
+      "createdAt": 1700000000000
+    }
+  ]
+}

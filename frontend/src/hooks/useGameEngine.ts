@@ -1,11 +1,12 @@
-import { useReducer, useEffect, useState, useCallback, useRef } from "react"
+import { useReducer, useEffect, useState, useCallback, useMemo } from "react"
 import type { GameConfig, AnswerResult, EngineAction } from "../types/engine.types"
 import { EngineCore } from "../engine/EngineCore"
 
 export function useGameEngine(config: GameConfig) {
-  const engineRef = useRef<EngineCore | null>(null)
-  if (!engineRef.current) engineRef.current = new EngineCore(config)
-  const engine = engineRef.current
+  // useMemo with empty deps keeps the engine stable for the component's lifetime.
+  // GameRenderer is remounted per game via key, so config never changes mid-session.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const engine = useMemo(() => new EngineCore(config), [])
 
   const [state, dispatch] = useReducer(engine.reduce, undefined, () => engine.initialState())
   const [lastResult, setLastResult] = useState<AnswerResult | null>(null)
@@ -32,6 +33,8 @@ export function useGameEngine(config: GameConfig) {
       })
     }, 1000)
     return () => clearInterval(tick)
+  // Intentional: only restart timer on question/status change, not on every state update.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentQuestionId, state.status])
 
   useEffect(() => { setIsShowingHint(false); setLastResult(null) }, [state.currentQuestionId])

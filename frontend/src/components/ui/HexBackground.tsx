@@ -28,8 +28,8 @@ export const HexBackground: React.FC = () => {
           style={{
             position: "fixed",
             top:      p.top,
-            left:     "left" in p ? p.left : undefined,
-            right:    "right" in p ? p.right : undefined,
+            left:     "left"  in p ? (p as { left: string }).left   : undefined,
+            right:    "right" in p ? (p as { right: string }).right : undefined,
             width:    p.size,
             height:   p.size,
             opacity:  p.opacity,

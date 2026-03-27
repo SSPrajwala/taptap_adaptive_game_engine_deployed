@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react"
+/* eslint-disable react-refresh/only-export-components */
+import React, { useState } from "react"
 import type { GamePlugin, PluginRenderProps, FlashcardQuestion, Question } from "../../types/engine.types"
 const FlashcardComponent: React.FC<PluginRenderProps<FlashcardQuestion>> = ({ question, onAnswer }) => {
   const [flipped, setFlipped] = useState(false)
   const [answered, setAnswered] = useState(false)
 
-  useEffect(() => { setFlipped(false); setAnswered(false) }, [question.id])
+  // No reset effect needed — GameRenderer remounts this component via key={questionId}
 
   const handleAnswer = (correct: boolean) => {
     if (answered) return

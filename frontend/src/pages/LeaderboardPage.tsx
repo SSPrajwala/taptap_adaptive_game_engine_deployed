@@ -1,28 +1,50 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import type { LeaderboardEntry } from "../types/engine.types"
 import { LeaderboardService } from "../engine/LeaderboardService"
 
 interface Props { onBack: () => void }
 
-export const LeaderboardPage: React.FC<Props> = ({ onBack }) => {
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([])
-  const [filter,  setFilter]  = useState<"global" | string>("global")
-  const [games,   setGames]   = useState<string[]>([])
+type Source = "backend" | "local"
 
-  useEffect(() => {
-    const all = LeaderboardService.getAll()
-    const uniqueGames = [...new Set(all.map(e => e.gameTitle))]
-    setGames(uniqueGames)
-    if (filter === "global") {
-      setEntries(LeaderboardService.getGlobal())
-    } else {
-      setEntries(
-        all.filter(e => e.gameTitle === filter)
-          .sort((a, b) => b.score - a.score || a.timeTaken - b.timeTaken)
-          .slice(0, 20)
-      )
+export const LeaderboardPage: React.FC<Props> = ({ onBack }) => {
+  const [entries, setEntries]   = useState<LeaderboardEntry[]>([])
+  const [filter,  setFilter]    = useState<"global" | string>("global")
+  const [games,   setGames]     = useState<string[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [source,  setSource]    = useState<Source>("backend")
+
+  const loadScores = useCallback(async () => {
+    setLoading(true)
+    try {
+      const all = await LeaderboardService.fetchGlobal()
+      // Also merge with localStorage so offline scores appear too
+      const local = LeaderboardService.getAll()
+      const merged = [...all]
+      for (const lEntry of local) {
+        if (!merged.find(e => e.id === lEntry.id)) merged.push(lEntry)
+      }
+      merged.sort((a, b) => b.score - a.score || a.timeTaken - b.timeTaken)
+
+      const uniqueGames = [...new Set(merged.map(e => e.gameTitle))]
+      const filtered = filter === "global"
+        ? merged.slice(0, 50)
+        : merged
+            .filter(e => e.gameTitle === filter)
+            .slice(0, 20)
+
+      setGames(uniqueGames)
+      setEntries(filtered)
+      setSource(all.length > 0 ? "backend" : "local")
+    } finally {
+      setLoading(false)
     }
   }, [filter])
+
+  useEffect(() => { void loadScores() }, [loadScores])
+
+  const handleFilterChange = (f: string) => {
+    setFilter(f)
+  }
 
   const formatDate = (ts: number) =>
     new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
@@ -34,31 +56,73 @@ export const LeaderboardPage: React.FC<Props> = ({ onBack }) => {
 
   const medals = ["🥇", "🥈", "🥉"]
 
+  const DIFF_COLOR: Record<string, string> = {
+    easy:   "#22FFAA",
+    medium: "#FFD700",
+    hard:   "#FF2D78",
+  }
+
   return (
     <div className="page-wrap">
       <div className="page-header">
         <button className="back-btn" onClick={onBack}>← Back</button>
         <h1 className="page-title">Leaderboard</h1>
-        <button className="btn-danger-sm" onClick={() => { LeaderboardService.clear(); setEntries([]) }}>
-          Clear
+        <button className="btn-danger-sm" onClick={() => { LeaderboardService.clear(); void loadScores() }}>
+          Clear Local
         </button>
       </div>
 
-      <p className="lb-subtitle">Sorted by score · ties broken by fastest time</p>
+      {/* Source indicator */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+        <p className="lb-subtitle" style={{ margin: 0 }}>
+          Sorted by score · ties broken by fastest time
+        </p>
+        <span style={{
+          fontSize:   "0.7rem",
+          fontFamily: "Exo 2, sans-serif",
+          padding:    "2px 8px",
+          borderRadius: "99px",
+          background: source === "backend" ? "rgba(34,255,170,0.1)" : "rgba(255,215,0,0.1)",
+          border:     source === "backend" ? "1px solid rgba(34,255,170,0.3)" : "1px solid rgba(255,215,0,0.3)",
+          color:      source === "backend" ? "#22FFAA" : "#FFD700",
+        }}>
+          {source === "backend" ? "🌐 Live" : "💾 Local"}
+        </span>
+        <button
+          onClick={() => void loadScores()}
+          style={{
+            background:   "rgba(168,85,247,0.08)",
+            border:       "1px solid rgba(168,85,247,0.2)",
+            borderRadius: "6px",
+            padding:      "3px 10px",
+            color:        "rgba(168,85,247,0.7)",
+            fontSize:     "0.72rem",
+            fontFamily:   "Exo 2, sans-serif",
+            cursor:       "pointer",
+          }}
+        >
+          ↻ Refresh
+        </button>
+      </div>
 
       {/* Filter tabs */}
       <div className="filter-tabs">
-        <button className={`filter-tab${filter === "global" ? " active" : ""}`} onClick={() => setFilter("global")}>
+        <button className={`filter-tab${filter === "global" ? " active" : ""}`} onClick={() => handleFilterChange("global")}>
           🌐 Global
         </button>
         {games.map(g => (
-          <button key={g} className={`filter-tab${filter === g ? " active" : ""}`} onClick={() => setFilter(g)}>
+          <button key={g} className={`filter-tab${filter === g ? " active" : ""}`} onClick={() => handleFilterChange(g)}>
             {g}
           </button>
         ))}
       </div>
 
-      {entries.length === 0 ? (
+      {loading ? (
+        <div className="empty-state">
+          <div className="empty-icon">⏳</div>
+          <p>Loading scores…</p>
+        </div>
+      ) : entries.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">🏆</div>
           <p>No scores yet. Play a game to appear here!</p>
@@ -80,7 +144,14 @@ export const LeaderboardPage: React.FC<Props> = ({ onBack }) => {
               <div className="lb-col-rank">{medals[i] ?? `#${i + 1}`}</div>
               <div className="lb-col-name">
                 <div className="lb-name">{entry.playerName}</div>
-                <div className="lb-game">{entry.gameTitle}</div>
+                <div className="lb-game">
+                  {entry.gameTitle}
+                  {entry.difficulty && (
+                    <span style={{ color: DIFF_COLOR[entry.difficulty] ?? "#A855F7", marginLeft: "6px", fontSize: "0.68rem" }}>
+                      {entry.difficulty}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="lb-col-score">
                 <span className="lb-score">{entry.score.toLocaleString()}</span>

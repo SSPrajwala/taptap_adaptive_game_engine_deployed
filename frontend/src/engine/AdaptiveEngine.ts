@@ -1,4 +1,4 @@
-import type { AdaptiveRule, Difficulty, PlayerStats, Question, GameConfig } from "../types/engine.types"
+import type { AdaptiveRule, Difficulty, PlayerStats, Question } from "../types/engine.types"
 
 export type AdaptiveAction =
   | { type: "adjustDifficulty"; difficulty: Difficulty }
@@ -20,7 +20,7 @@ export class AdaptiveEngine {
     return this.shuffle(source)
   }
 
-  nextDifficulty(current: Difficulty, accuracy: number, _config: GameConfig): Difficulty {
+  nextDifficulty(current: Difficulty, accuracy: number): Difficulty {
     for (const rule of this.rules) {
       if (rule.action.type === "adjustDifficulty" && rule.condition.metric === "accuracy" && this.compare(accuracy, rule.condition.operator, rule.condition.value)) {
         const t = rule.action.payload?.["difficulty"] as Difficulty | undefined
