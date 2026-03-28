@@ -550,6 +550,7 @@ export const MultiplayerPage: React.FC<Props> = ({ games, onBack }) => {
           config={activeGame}
           questionIdx={mp.questionIdx}
           onAnswer={(correct, pts) => mp.submitAnswer(correct, pts)}
+          onLeave={() => { mp.leaveRoom(); onBack() }}
         />
       </div>
     )
@@ -623,17 +624,18 @@ export const MultiplayerPage: React.FC<Props> = ({ games, onBack }) => {
 // We give each question a fresh key so the engine re-mounts for each new question.
 
 const MultiplayerGameAdapter: React.FC<{
-  config:     GameConfig
+  config:      GameConfig
   questionIdx: number
-  onAnswer:   (correct: boolean, pointsAwarded: number) => void
-}> = ({ config, questionIdx, onAnswer }) => {
+  onAnswer:    (correct: boolean, pointsAwarded: number) => void
+  onLeave:     () => void
+}> = ({ config, questionIdx, onAnswer, onLeave }) => {
   // We render the full GameRenderer — it handles the plugin, scoring, everything.
-  // The onWrong/onCorrect callbacks let us intercept answers and forward to server.
+  // onLeave is wired to the "← Library" back button so it actually navigates away.
   return (
     <div key={`q-${questionIdx}`}>
       <GameRenderer
         config={config}
-        onBack={() => {/* no back during multiplayer */}}
+        onBack={onLeave}
         onCorrect={() => onAnswer(true,  100)}
         onWrong={() =>  onAnswer(false,  0)}
       />
