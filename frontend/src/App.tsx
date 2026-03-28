@@ -102,7 +102,7 @@ function AppInner() {
   const [games, setGames] = useState<GameConfig[]>(STATIC_GAMES)
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/games", { signal: AbortSignal.timeout(4000) })
+    fetch((import.meta.env.VITE_API_URL ?? "http://localhost:3001/api"), { signal: AbortSignal.timeout(4000) })
       .then(r => r.ok ? r.json() : [])
       .then((backendGames: GameConfig[]) => {
         if (!backendGames.length) return
