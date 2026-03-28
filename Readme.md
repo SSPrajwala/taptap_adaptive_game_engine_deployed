@@ -2,8 +2,8 @@
 
 > **A reusable, plugin-based, JSON-driven game engine framework for gamified learning — built for the TapTap × Blackbucks Hackathon 2026**
 
-🎮 **Live Demo:** [taptapadaptivegameengine.vercel.app](https://taptapadaptivegameengine.vercel.app)
-📁 **Repository:** [github.com/SSPrajwala/TapTap_Game_Engine](https://github.com/SSPrajwala/TapTap_Game_Engine)
+🎮 **Live Demo:** [taptapadaptivegameenginedeployed7.vercel.app](https://taptapadaptivegameenginedeployed7.vercel.app/)
+📁 **Repository:** [github.com/SSPrajwala/taptap_adaptive_game_engine_deployed](https://github.com/SSPrajwala/taptap_adaptive_game_engine_deployed)
 
 ---
 
@@ -69,8 +69,8 @@ taptap_adaptive_game_engine/
 
 ### Frontend only
 ```bash
-git clone https://github.com/SSPrajwala/TapTap_Game_Engine.git
-cd TapTap_Game_Engine/frontend
+git clone https://github.com/SSPrajwala/taptap_adaptive_game_engine_deployed.git
+cd taptap_adaptive_game_engine_deployed/frontend
 npm install
 npm run dev
 ```
@@ -79,12 +79,12 @@ Open `http://localhost:5173`. Static games work immediately — no backend neede
 ### Full stack (frontend + multiplayer backend)
 ```bash
 # Terminal 1 — backend
-cd TapTap_Game_Engine/backend
+cd taptap_adaptive_game_engine_deployed/backend
 npm install
 node server.js          # runs on http://localhost:3001
 
 # Terminal 2 — frontend
-cd TapTap_Game_Engine/frontend
+cd taptap_adaptive_game_engine_deployed/frontend
 npm install
 npm run dev             # runs on http://localhost:5173
 ```

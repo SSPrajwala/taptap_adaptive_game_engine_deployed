@@ -59,7 +59,7 @@ export const Footer: React.FC<Props> = ({ gameCount, questionCount }) => (
 
       {/* Right */}
       <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-        <a href="https://github.com/SSPrajwala/TapTap_Game_Engine" target="_blank" rel="noreferrer"
+        <a href="https://github.com/SSPrajwala/taptap_adaptive_game_engine_deployed" target="_blank" rel="noreferrer"
           style={{
             color:       "rgba(232,224,255,0.4)",
             fontSize:    "0.72rem",
