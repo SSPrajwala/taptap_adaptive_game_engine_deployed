@@ -15,9 +15,99 @@
       "passwordHash": "$2a$10$E.YlFLF8eLkNjYnhkTimvOtQjW489SyMeBCAd13OnSoI/oMYAlCXW",
       "college": "AIIMS",
       "createdAt": 1774673675008
+    },
+    {
+      "id": "8fa1a8c5-9e72-4fd7-b97c-7fa93b3fe089",
+      "name": "Amy",
+      "email": "amy@gmail.com",
+      "passwordHash": "$2a$10$yIuRDrWakUILpC4KUnQj0u3Hhl4Q0BGx9Peue5Mi6gyozDs8hUMOy",
+      "college": "Vasee",
+      "createdAt": 1774677729315
+    },
+    {
+      "id": "4fa0aa89-619b-44df-b6c0-4eedf2c7f5f4",
+      "name": "dev",
+      "email": "dev@gmail.com",
+      "passwordHash": "$2a$10$ZIB1/OZr3kO2Zwm89tRDHuCm/vuTZleWy1VsswWglI1dbRqIFGKVW",
+      "college": "",
+      "createdAt": 1774714132796
+    },
+    {
+      "id": "f801653c-8428-4df4-b1b6-e258aff2292e",
+      "name": "grace",
+      "email": "grace@gmail.com",
+      "passwordHash": "$2a$10$Yrrp83uqO6U7/FfoOOyfv.uUctiKAstX8Utta.gAbq2hoyhHbxDsm",
+      "college": "",
+      "createdAt": 1774714176494
     }
   ],
-  "scores": [],
+  "scores": [
+    {
+      "id": "135f3629-b9a7-42af-8d8a-98d75240a170",
+      "userId": "7b128199-a7a2-4f6b-84b0-291e18661c12",
+      "playerName": "SSP",
+      "gameId": "world-capitals-v1",
+      "gameTitle": "World Capitals",
+      "score": 1150,
+      "accuracy": 0.9,
+      "timeTaken": 55,
+      "difficulty": "hard",
+      "timestamp": 1774716526630,
+      "college": "KITSW"
+    },
+    {
+      "id": "ca1a3890-8886-4e5c-ba25-431a3059acc4",
+      "userId": "8fa1a8c5-9e72-4fd7-b97c-7fa93b3fe089",
+      "playerName": "Amy",
+      "gameId": "binaryrunner",
+      "gameTitle": "Binary Runner",
+      "score": 800,
+      "accuracy": 0.5,
+      "timeTaken": 66,
+      "difficulty": "hard",
+      "timestamp": 1774711186451,
+      "college": "Vasee"
+    },
+    {
+      "id": "35b79a80-c21c-49fc-bd90-5ea1b95b05be",
+      "userId": "8fa1a8c5-9e72-4fd7-b97c-7fa93b3fe089",
+      "playerName": "Amy",
+      "gameId": "binaryrunner",
+      "gameTitle": "Binary Runner",
+      "score": 800,
+      "accuracy": 0.5,
+      "timeTaken": 83,
+      "difficulty": "hard",
+      "timestamp": 1774712415942,
+      "college": "Vasee"
+    },
+    {
+      "id": "aad7b5a8-e5bf-4892-a8d1-9be81689482c",
+      "userId": "4fa0aa89-619b-44df-b6c0-4eedf2c7f5f4",
+      "playerName": "dev",
+      "gameId": "world-capitals-v1",
+      "gameTitle": "World Capitals",
+      "score": 350,
+      "accuracy": 0.5,
+      "timeTaken": 40,
+      "difficulty": "easy",
+      "timestamp": 1774716574837,
+      "college": ""
+    },
+    {
+      "id": "9fd8d926-39a6-48c3-a257-75bf0ae056ef",
+      "userId": "f801653c-8428-4df4-b1b6-e258aff2292e",
+      "playerName": "grace",
+      "gameId": "world-capitals-v1",
+      "gameTitle": "World Capitals",
+      "score": 100,
+      "accuracy": 0.4,
+      "timeTaken": 19,
+      "difficulty": "easy",
+      "timestamp": 1774716607791,
+      "college": ""
+    }
+  ],
   "admins": [
     {
       "id": "admin_001",
@@ -26,11 +116,10 @@
       "createdAt": 1700000000000
     },
     {
-  "id": "admin_002",
-  "name": "Suguna",
-  "accessCode": "SUGUNA-ADMIN-2026",
-  "createdAt": 1700000001000
-}
-
+      "id": "admin_002",
+      "name": "Suguna",
+      "accessCode": "SUGUNA-ADMIN-2026",
+      "createdAt": 1700000001000
+    }
   ]
 }

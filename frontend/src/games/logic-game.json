@@ -208,6 +208,23 @@
       "correctIndex": 2,
       "explanation": "18 / 2 = 9",
       "hint": "3*3=..."
+    },
+    {
+      "id": "q-a0581c9f-3aea-4c25-9ddd-c73a233f9574",
+      "type": "quiz",
+      "difficulty": "medium",
+      "points": 80,
+      "timeLimit": 20,
+      "prompt": "30-30=?",
+      "options": [
+        "9",
+        "6",
+        "0",
+        "2"
+      ],
+      "correctIndex": 2,
+      "explanation": "30-30=0",
+      "hint": "NULL"
     }
   ],
   "levels": [
@@ -219,7 +236,8 @@
         "q-easy-1",
         "q-easy-3",
         "q-easy-4",
-        "q-991bfbb3-c263-4f71-9091-e68a953b3055"
+        "q-991bfbb3-c263-4f71-9091-e68a953b3055",
+        "q-a0581c9f-3aea-4c25-9ddd-c73a233f9574"
       ],
       "passingScore": 50
     },
