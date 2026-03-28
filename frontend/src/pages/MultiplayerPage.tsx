@@ -201,67 +201,115 @@ const LobbyEntryForm: React.FC<{
 // ── Phase: Lobby Room (after joining) ─────────────────────────────────────────
 
 const LobbyRoom: React.FC<{
-  room:        import("../hooks/useMultiplayerRoom").RoomState
-  isHost:      boolean
-  mySocketId:  string
-  games:       GameConfig[]
-  onSelectGame:(gameId: string, gameTitle: string, questionCount: number) => void
-  onReady:     (ready: boolean) => void
-  onStart:     () => void
-  onLeave:     () => void
-  error:       string | null
+  room:         import("../hooks/useMultiplayerRoom").RoomState
+  isHost:       boolean
+  myPlayerId:   string
+  games:        GameConfig[]
+  onSelectGame: (gameId: string, gameTitle: string, questionCount: number) => void
+  onReady:      (ready: boolean) => void
+  onStart:      () => void
+  onLeave:      () => void
+  error:        string | null
   onClearError: () => void
-}> = ({ room, isHost, mySocketId, games, onSelectGame, onReady, onStart, onLeave, error, onClearError }) => {
-  const me        = room.players.find(p => p.socketId === mySocketId)
-  const allReady  = room.players.every(p => p.ready)
-  const canStart  = isHost && allReady && !!room.gameId && room.players.length >= 1
+  notification: string | null
+}> = ({ room, isHost, myPlayerId, games, onSelectGame, onReady, onStart, onLeave, error, onClearError, notification }) => {
+  // Identify "me" by persistent playerId (survives socket reconnects)
+  const me = room.players.find(p => p.playerId === myPlayerId)
+
+  // canStart: all non-host connected players must be ready
+  // (host is auto-marked ready on the server, but we double-check here too)
+  const connected       = room.players.filter(p => !p.disconnected)
+  const nonHostConn     = connected.filter(p => p.playerId !== room.hostPlayerId)
+  const allNonHostReady = nonHostConn.length === 0 || nonHostConn.every(p => p.ready)
+  const canStart        = isHost && allNonHostReady && !!room.gameId && connected.length >= 1
+
+  // Why can't we start yet?
+  const startBlockReason = !room.gameId
+    ? "Select a game above first"
+    : !allNonHostReady
+    ? `Waiting for ${nonHostConn.filter(p => !p.ready).map(p => p.name).join(", ")} to ready up`
+    : null
 
   return (
-    <div style={{ maxWidth: "640px", margin: "0 auto", paddingTop: "32px" }}>
+    <div style={{ maxWidth: "660px", margin: "0 auto", paddingTop: "24px" }}>
+      {/* Toast notification */}
+      {notification && (
+        <div style={{ background: "rgba(34,255,170,0.1)", border: "1px solid rgba(34,255,170,0.3)",
+          borderRadius: "8px", padding: "9px 14px", fontSize: "0.82rem", color: "#22FFAA",
+          marginBottom: "12px", textAlign: "center", fontFamily: "Exo 2, sans-serif" }}>
+          {notification}
+        </div>
+      )}
       {error && (
         <div onClick={onClearError} style={{ background: "rgba(255,45,120,0.1)",
           border: "1px solid rgba(255,45,120,0.4)", borderRadius: "8px",
           padding: "10px 14px", fontSize: "0.82rem", color: "#FF2D78",
-          marginBottom: "16px", cursor: "pointer" }}>
-          ⚠ {error}
+          marginBottom: "12px", cursor: "pointer" }}>
+          ⚠ {error} · click to dismiss
         </div>
       )}
 
       {/* Room code banner */}
-      <GlassCard style={{ marginBottom: "16px", textAlign: "center" }}>
-        <div style={{ color: "rgba(232,224,255,0.45)", fontSize: "0.72rem",
+      <GlassCard style={{ marginBottom: "14px", textAlign: "center" }}>
+        <div style={{ color: "rgba(232,224,255,0.45)", fontSize: "0.7rem",
           fontFamily: "Orbitron, monospace", letterSpacing: "0.1em", marginBottom: "4px" }}>
           ROOM CODE — SHARE WITH FRIENDS
         </div>
-        <div style={{ fontFamily: "Orbitron, monospace", fontSize: "2.2rem", letterSpacing: "0.35em",
-          color: "#00D4FF", textShadow: "0 0 20px rgba(0,212,255,0.5)" }}>
+        <div style={{ fontFamily: "Orbitron, monospace", fontSize: "2.4rem", letterSpacing: "0.4em",
+          color: "#00D4FF", textShadow: "0 0 24px rgba(0,212,255,0.6)" }}>
           {room.code}
+        </div>
+        <div style={{ fontSize: "0.72rem", color: "rgba(232,224,255,0.35)", marginTop: "4px" }}>
+          Other players: go to Multiplayer → Connect → Join Room → type this code
         </div>
       </GlassCard>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
 
-        {/* Players */}
+        {/* Players list */}
         <GlassCard>
           <h3 style={{ fontFamily: "Orbitron, monospace", color: "#A855F7",
-            fontSize: "0.82rem", margin: "0 0 14px" }}>
-            PLAYERS ({room.players.length}/8)
+            fontSize: "0.78rem", margin: "0 0 12px", display: "flex",
+            justifyContent: "space-between", alignItems: "center" }}>
+            <span>PLAYERS</span>
+            <span style={{ color: "rgba(232,224,255,0.4)" }}>{connected.length}/{room.players.length} online</span>
           </h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {room.players.map(p => (
-              <div key={p.socketId} style={{ display: "flex", alignItems: "center", gap: "10px",
-                padding: "8px 12px", background: p.socketId === mySocketId
-                  ? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.03)",
-                borderRadius: "8px", fontSize: "0.84rem",
-                border: p.socketId === mySocketId ? "1px solid rgba(168,85,247,0.3)" : "1px solid transparent" }}>
-                <span style={{ fontSize: "1rem" }}>
-                  {room.hostSocketId === p.socketId ? "👑" : p.ready ? "✅" : "⏳"}
-                </span>
-                <span style={{ flex: 1, color: "#E8E0FF", fontWeight: p.socketId === mySocketId ? 700 : 400 }}>
-                  {p.name}{p.socketId === mySocketId ? " (you)" : ""}
-                </span>
-              </div>
-            ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            {room.players.map(p => {
+              const isMe   = p.playerId === myPlayerId
+              const isHost_ = p.playerId === room.hostPlayerId
+              return (
+                <div key={p.playerId ?? p.socketId} style={{
+                  display: "flex", alignItems: "center", gap: "10px",
+                  padding: "8px 12px",
+                  background: isMe ? "rgba(168,85,247,0.14)" : "rgba(255,255,255,0.03)",
+                  borderRadius: "8px", fontSize: "0.84rem",
+                  border: isMe ? "1px solid rgba(168,85,247,0.4)" : "1px solid transparent",
+                  opacity: p.disconnected ? 0.45 : 1,
+                }}>
+                  <span style={{ fontSize: "1rem", minWidth: "1.2rem", textAlign: "center" }}>
+                    {isHost_ ? "👑" : p.ready ? "✅" : "⏳"}
+                  </span>
+                  <span style={{ flex: 1, color: "#E8E0FF", fontWeight: isMe ? 700 : 400 }}>
+                    {p.name}
+                    {isMe && <span style={{ color: "rgba(168,85,247,0.7)", fontSize: "0.75rem" }}> (you)</span>}
+                    {isHost_ && !isMe && <span style={{ color: "rgba(232,200,50,0.7)", fontSize: "0.72rem" }}> host</span>}
+                  </span>
+                  {p.disconnected && (
+                    <span style={{ fontSize: "0.68rem", color: "rgba(255,45,120,0.6)" }}>offline</span>
+                  )}
+                  {!p.disconnected && !isHost_ && (
+                    <span style={{ fontSize: "0.72rem",
+                      color: p.ready ? "#22FFAA" : "rgba(232,224,255,0.3)" }}>
+                      {p.ready ? "ready" : "not ready"}
+                    </span>
+                  )}
+                  {isHost_ && (
+                    <span style={{ fontSize: "0.72rem", color: "#FFD700" }}>host</span>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </GlassCard>
 
@@ -269,53 +317,72 @@ const LobbyRoom: React.FC<{
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <GlassCard>
             <h3 style={{ fontFamily: "Orbitron, monospace", color: "#A855F7",
-              fontSize: "0.82rem", margin: "0 0 12px" }}>
-              {isHost ? "SELECT GAME" : "GAME"}
+              fontSize: "0.78rem", margin: "0 0 10px" }}>
+              {isHost ? "👑 SELECT GAME" : "SELECTED GAME"}
             </h3>
             {isHost ? (
-              <select
-                value={room.gameId ?? ""}
-                onChange={e => {
-                  const g = games.find(g => g.id === e.target.value)
-                  if (g) onSelectGame(g.id, g.title, g.questions.length)
-                }}
-                style={{ width: "100%", background: "#0D0B1E",
-                  border: "1px solid rgba(168,85,247,0.45)", borderRadius: "8px",
-                  color: "#E8E0FF", fontFamily: "Exo 2, sans-serif",
-                  fontSize: "0.84rem", padding: "9px 12px",
-                  WebkitAppearance: "none", appearance: "none",
-                  cursor: "pointer" }}
-              >
-                <option value="" style={{ background: "#0D0B1E", color: "rgba(232,224,255,0.5)" }}>
-                  — pick a game —
-                </option>
-                {games.map(g => (
-                  <option key={g.id} value={g.id}
-                    style={{ background: "#0D0B1E", color: "#E8E0FF", padding: "6px" }}>
-                    {g.ui?.emoji ?? "🎮"} {g.title} ({g.plugin})
+              <>
+                <select
+                  value={room.gameId ?? ""}
+                  onChange={e => {
+                    const g = games.find(g => g.id === e.target.value)
+                    if (g) onSelectGame(g.id, g.title, g.questions.length)
+                  }}
+                  style={{ width: "100%", background: "#0D0B1E",
+                    border: "1px solid rgba(168,85,247,0.45)", borderRadius: "8px",
+                    color: "#E8E0FF", fontFamily: "Exo 2, sans-serif",
+                    fontSize: "0.84rem", padding: "9px 12px",
+                    WebkitAppearance: "none", appearance: "none",
+                    cursor: "pointer", marginBottom: "8px" }}
+                >
+                  <option value="" style={{ background: "#0D0B1E", color: "rgba(232,224,255,0.5)" }}>
+                    — pick a game —
                   </option>
-                ))}
-              </select>
+                  {games.map(g => (
+                    <option key={g.id} value={g.id}
+                      style={{ background: "#0D0B1E", color: "#E8E0FF" }}>
+                      {g.ui?.emoji ?? "🎮"} {g.title} ({g.plugin})
+                    </option>
+                  ))}
+                </select>
+                {room.gameId && (
+                  <div style={{ fontSize: "0.75rem", color: "#22FFAA" }}>
+                    ✓ {room.gameTitle} selected · {room.questionCount} questions
+                  </div>
+                )}
+              </>
             ) : (
               <div style={{ color: room.gameId ? "#22FFAA" : "rgba(232,224,255,0.35)",
                 fontSize: "0.84rem" }}>
-                {room.gameTitle ?? "Waiting for host to select…"}
+                {room.gameId
+                  ? `✓ ${room.gameTitle}`
+                  : "Waiting for host to select a game…"}
               </div>
             )}
           </GlassCard>
 
           <GlassCard>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {/* Guests: Mark Ready toggle */}
               {!isHost && (
                 <PrimaryBtn onClick={() => onReady(!me?.ready)}
                   color={me?.ready ? "#22FFAA" : "#A855F7"}>
-                  {me?.ready ? "✅ Ready!" : "Mark Ready"}
+                  {me?.ready ? "✅ You are Ready!" : "⚡ Mark Ready"}
                 </PrimaryBtn>
               )}
+              {/* Host: Start Game */}
               {isHost && (
-                <PrimaryBtn onClick={onStart} disabled={!canStart}>
-                  {canStart ? "🚀 Start Game!" : "Waiting for all ready…"}
-                </PrimaryBtn>
+                <>
+                  <PrimaryBtn onClick={onStart} disabled={!canStart}>
+                    {canStart ? "🚀 Start Game!" : "⏳ Waiting…"}
+                  </PrimaryBtn>
+                  {startBlockReason && (
+                    <div style={{ fontSize: "0.72rem", color: "rgba(232,224,255,0.4)",
+                      textAlign: "center", fontFamily: "Exo 2, sans-serif" }}>
+                      {startBlockReason}
+                    </div>
+                  )}
+                </>
               )}
               <button onClick={onLeave} style={{ background: "transparent",
                 border: "1px solid rgba(255,45,120,0.3)", borderRadius: "8px",
@@ -451,13 +518,13 @@ export const MultiplayerPage: React.FC<Props> = ({ games, onBack }) => {
   // Track player name for leaderboard highlighting
   const [myName, setMyName] = useState("")
 
-  // When in lobby room, find our name
+  // When in lobby room, find our name (use persistent playerId — survives reconnects)
   useEffect(() => {
-    if (mp.room && mp.mySocketId) {
-      const me = mp.room.players.find(p => p.socketId === mp.mySocketId)
+    if (mp.room && mp.myPlayerId) {
+      const me = mp.room.players.find(p => p.playerId === mp.myPlayerId)
       if (me) setMyName(me.name)
     }
-  }, [mp.room, mp.mySocketId])
+  }, [mp.room, mp.myPlayerId])
 
   // Active game config (for multiplayer game rendering)
   const activeGame = mp.room?.gameId ? games.find(g => g.id === mp.room!.gameId) ?? null : null
@@ -516,7 +583,7 @@ export const MultiplayerPage: React.FC<Props> = ({ games, onBack }) => {
       <LobbyRoom
         room={mp.room}
         isHost={mp.isHost}
-        mySocketId={mp.mySocketId}
+        myPlayerId={mp.myPlayerId}
         games={games}
         onSelectGame={mp.selectGame}
         onReady={mp.setReady}
@@ -524,6 +591,7 @@ export const MultiplayerPage: React.FC<Props> = ({ games, onBack }) => {
         onLeave={() => { mp.leaveRoom(); onBack() }}
         error={mp.error}
         onClearError={mp.clearError}
+        notification={mp.notification}
       />
     )
   }

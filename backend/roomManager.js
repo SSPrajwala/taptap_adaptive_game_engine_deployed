@@ -1,45 +1,54 @@
 /**
  * roomManager.js — In-memory multiplayer room state
- * Rooms are transient (not persisted to disk — they last while the server is up).
  *
- * Room lifecycle:
- *   create → players join → host starts → all play → game ends → room auto-cleaned
+ * Key design decisions (Kahoot / Among Us style):
+ *  - Each player has a persistent playerId (UUID from sessionStorage on client)
+ *    so we can restore their room membership after a socket reconnect/refresh.
+ *  - The HOST is automatically marked ready — only guests need to click Ready.
+ *  - leaveRoom during "waiting" marks the player as disconnected for a 10-second
+ *    grace period; rejoinRoom() restores them if they reconnect in time.
+ *  - During an active game, players are marked disconnected (not removed) so
+ *    scoring still works when they return.
  */
 
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  // no ambiguous O/0/I/1
 const ROOM_TTL_MS     = 60 * 60 * 1000   // auto-remove unused rooms after 1 hour
 const MAX_PLAYERS     = 8
+const DISCONNECT_GRACE_MS = 12_000       // 12s to reconnect before being removed
 
 /** @type {Map<string, Room>} */
 const rooms = new Map()
 
-// ── Types (JSDoc only, this is CommonJS) ─────────────────────────────────────
 /**
  * @typedef {{
- *   code: string,
- *   hostSocketId: string,
- *   gameId: string | null,
- *   gameTitle: string | null,
- *   status: "waiting" | "countdown" | "playing" | "ended",
- *   players: Map<string, Player>,
- *   currentQuestionIndex: number,
- *   questionCount: number,
- *   createdAt: number,
- *   startedAt: number | null,
- *   questionStartedAt: number | null,
- * }} Room
+ *   socketId:       string,
+ *   playerId:       string,          // persistent UUID from client sessionStorage
+ *   name:           string,
+ *   ready:          boolean,
+ *   score:          number,
+ *   hits:           number,
+ *   answers:        number,
+ *   correct:        number,
+ *   finishedQuestion: boolean,
+ *   disconnected:   boolean,
+ *   disconnectedAt: number | null,
+ * }} Player
  *
  * @typedef {{
- *   socketId: string,
- *   name: string,
- *   ready: boolean,
- *   score: number,
- *   hits: number,
- *   answers: number,
- *   correct: number,
- *   finishedQuestion: boolean,
- *   disconnected: boolean,
- * }} Player
+ *   code:                 string,
+ *   hostSocketId:         string,
+ *   hostPlayerId:         string,
+ *   gameId:               string | null,
+ *   gameTitle:            string | null,
+ *   status:               "waiting" | "countdown" | "playing" | "ended",
+ *   players:              Map<string, Player>,   // keyed by socketId
+ *   playersByPid:         Map<string, Player>,   // keyed by playerId (for reconnect lookup)
+ *   currentQuestionIndex: number,
+ *   questionCount:        number,
+ *   createdAt:            number,
+ *   startedAt:            number | null,
+ *   questionStartedAt:    number | null,
+ * }} Room
  */
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -52,9 +61,10 @@ function generateCode() {
   return rooms.has(code) ? generateCode() : code
 }
 
-function makePlayer(socketId, name) {
+function makePlayer(socketId, playerId, name) {
   return {
     socketId,
+    playerId:          playerId || socketId,  // fallback to socketId if no persistent id
     name:              name.trim().slice(0, 20) || "Player",
     ready:             false,
     score:             0,
@@ -63,25 +73,28 @@ function makePlayer(socketId, name) {
     correct:           0,
     finishedQuestion:  false,
     disconnected:      false,
+    disconnectedAt:    null,
   }
 }
 
 function serializeRoom(room) {
   const players = []
-  for (const [, p] of room.players) {
+  for (const p of room.players.values()) {
     players.push({
-      socketId:    p.socketId,
-      name:        p.name,
-      ready:       p.ready,
-      score:       p.score,
-      correct:     p.correct,
-      answers:     p.answers,
+      socketId:     p.socketId,
+      playerId:     p.playerId,
+      name:         p.name,
+      ready:        p.ready,
+      score:        p.score,
+      correct:      p.correct,
+      answers:      p.answers,
       disconnected: p.disconnected,
     })
   }
   return {
     code:                 room.code,
     hostSocketId:         room.hostSocketId,
+    hostPlayerId:         room.hostPlayerId,
     gameId:               room.gameId,
     gameTitle:            room.gameTitle,
     status:               room.status,
@@ -93,16 +106,21 @@ function serializeRoom(room) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-function createRoom(socketId, playerName) {
+function createRoom(socketId, playerId, playerName) {
   const code = generateCode()
+  const hostPlayer = makePlayer(socketId, playerId, playerName)
+  hostPlayer.ready = true   // ← host is ALWAYS considered ready
+
   /** @type {Room} */
   const room = {
     code,
     hostSocketId:         socketId,
+    hostPlayerId:         hostPlayer.playerId,
     gameId:               null,
     gameTitle:            null,
     status:               "waiting",
-    players:              new Map([[socketId, makePlayer(socketId, playerName)]]),
+    players:              new Map([[socketId, hostPlayer]]),
+    playersByPid:         new Map([[hostPlayer.playerId, hostPlayer]]),
     currentQuestionIndex: 0,
     questionCount:        0,
     createdAt:            Date.now(),
@@ -116,37 +134,92 @@ function createRoom(socketId, playerName) {
     if (rooms.has(code)) rooms.delete(code)
   }, ROOM_TTL_MS)
 
-  return { room, player: room.players.get(socketId) }
+  return { room, player: hostPlayer }
 }
 
-function joinRoom(code, socketId, playerName) {
+function joinRoom(code, socketId, playerId, playerName) {
   const room = rooms.get(code.toUpperCase())
   if (!room)                                     return { error: "Room not found." }
   if (room.status !== "waiting")                 return { error: "Game already in progress." }
   if (room.players.size >= MAX_PLAYERS)          return { error: "Room is full (max 8 players)." }
   if (room.players.has(socketId))                return { error: "Already in this room." }
 
-  const player = makePlayer(socketId, playerName)
+  // Check if a player with the same persistent ID is already in room (unlikely on join)
+  const existingByPid = room.playersByPid.get(playerId)
+  if (existingByPid && !existingByPid.disconnected) {
+    return { error: "You are already in this room in another tab." }
+  }
+
+  const player = makePlayer(socketId, playerId, playerName)
   room.players.set(socketId, player)
+  room.playersByPid.set(player.playerId, player)
   return { room, player }
 }
 
+/**
+ * Reconnect: player with persistent playerId returns after socket drop.
+ * Updates their socketId and returns room state for re-sync.
+ */
+function rejoinRoom(playerId, newSocketId) {
+  for (const room of rooms.values()) {
+    const player = room.playersByPid.get(playerId)
+    if (!player) continue
+
+    const oldSocketId = player.socketId
+
+    // Update socket ID in players map
+    room.players.delete(oldSocketId)
+    player.socketId       = newSocketId
+    player.disconnected   = false
+    player.disconnectedAt = null
+    room.players.set(newSocketId, player)
+    // playersByPid entry stays valid (same player object)
+
+    // Update room's host reference if this was the host
+    if (room.hostSocketId === oldSocketId) {
+      room.hostSocketId = newSocketId
+    }
+
+    return { room, player }
+  }
+  return null
+}
+
+/**
+ * Mark player as disconnected. During "waiting", schedule removal after grace.
+ * Returns { code, room } or null if not in any room.
+ */
 function leaveRoom(socketId) {
   for (const [code, room] of rooms) {
     if (!room.players.has(socketId)) continue
 
     const player = room.players.get(socketId)
-    if (room.status === "waiting") {
-      room.players.delete(socketId)
-      // Reassign host if the host left
-      if (room.hostSocketId === socketId && room.players.size > 0) {
-        room.hostSocketId = room.players.keys().next().value
+    player.disconnected   = true
+    player.disconnectedAt = Date.now()
+
+    // Reassign host to next connected player if needed
+    if (room.hostSocketId === socketId) {
+      const next = [...room.players.values()].find(p => !p.disconnected && p.socketId !== socketId)
+      if (next) {
+        room.hostSocketId = next.socketId
+        room.hostPlayerId = next.playerId
       }
-      if (room.players.size === 0) rooms.delete(code)
-    } else {
-      // Mark as disconnected rather than removing (game is running)
-      player.disconnected = true
     }
+
+    if (room.status === "waiting") {
+      // Grace period — if they reconnect (via rejoinRoom), disconnected flag clears.
+      // After DISCONNECT_GRACE_MS, remove them permanently if still disconnected.
+      setTimeout(() => {
+        const p = room.players.get(socketId)
+        if (!p || !p.disconnected) return   // already reconnected
+        room.players.delete(socketId)
+        room.playersByPid.delete(p.playerId)
+        // If room is now empty, delete it
+        const connected = [...room.players.values()].filter(x => !x.disconnected)
+        if (connected.length === 0) rooms.delete(code)
+      }, DISCONNECT_GRACE_MS)
+    }
+
     return { code, room: rooms.get(code) ?? null }
   }
   return null
@@ -176,18 +249,19 @@ function startGame(socketId) {
     if (room.hostSocketId !== socketId)   return { error: "Only the host can start." }
     if (room.status !== "waiting")        return { error: "Game already started." }
     if (!room.gameId)                     return { error: "Select a game first." }
-    if (room.players.size < 1)            return { error: "Need at least 1 player." }
+
+    const connected = [...room.players.values()].filter(p => !p.disconnected)
+    if (connected.length < 1)             return { error: "Need at least 1 connected player." }
 
     room.status               = "countdown"
     room.startedAt            = Date.now()
     room.currentQuestionIndex = 0
 
-    // Reset all player scores
     for (const p of room.players.values()) {
-      p.score             = 0
-      p.correct           = 0
-      p.answers           = 0
-      p.finishedQuestion  = false
+      p.score            = 0
+      p.correct          = 0
+      p.answers          = 0
+      p.finishedQuestion = false
     }
     return { room }
   }
@@ -218,10 +292,9 @@ function submitAnswer(socketId, roomCode, correct, pointsAwarded) {
 
   player.answers++
   if (correct) player.correct++
-  player.score             += pointsAwarded
+  player.score            += pointsAwarded
   player.finishedQuestion  = true
 
-  // Check if all (connected) players have answered
   const connected   = [...room.players.values()].filter(p => !p.disconnected)
   const allAnswered = connected.every(p => p.finishedQuestion)
 
@@ -232,15 +305,15 @@ function getLeaderboard(roomCode) {
   const room = rooms.get(roomCode)
   if (!room) return []
   return [...room.players.values()]
-    .filter(p => !p.disconnected)
     .sort((a, b) => b.score - a.score || b.correct - a.correct)
     .map((p, i) => ({
-      rank:      i + 1,
-      name:      p.name,
-      score:     p.score,
-      correct:   p.correct,
-      answers:   p.answers,
-      accuracy:  p.answers > 0 ? Math.round((p.correct / p.answers) * 100) : 0,
+      rank:         i + 1,
+      name:         p.name,
+      score:        p.score,
+      correct:      p.correct,
+      answers:      p.answers,
+      accuracy:     p.answers > 0 ? Math.round((p.correct / p.answers) * 100) : 0,
+      disconnected: p.disconnected,
     }))
 }
 
@@ -251,9 +324,14 @@ function getRoomBySocket(socketId) {
   return null
 }
 
+function getRoomByCode(code) {
+  return rooms.get(code.toUpperCase()) ?? null
+}
+
 module.exports = {
   createRoom,
   joinRoom,
+  rejoinRoom,
   leaveRoom,
   setReady,
   selectGame,
@@ -262,5 +340,6 @@ module.exports = {
   submitAnswer,
   getLeaderboard,
   getRoomBySocket,
+  getRoomByCode,
   serializeRoom,
 }
