@@ -154,15 +154,16 @@ const TapBlitzComponent: React.FC<PluginRenderProps<TapBlitzQuestion>> = ({
   const [gameStarted, setGameStarted] = useState(false)
   const [showHelp,    setShowHelp]    = useState(false)
 
-  // ── Countdown before wave ─────────────────────────────────────────────────
+  // ── Countdown before wave — pauses when How-to-Play modal is open ─────────
   useEffect(() => {
     if (countDown <= 0) {
       setGameStarted(true)
       return
     }
+    if (showHelp) return              // ← pause while modal is visible
     const t = setTimeout(() => setCountDown(c => c - 1), 1000)
     return () => clearTimeout(t)
-  }, [countDown])
+  }, [countDown, showHelp])
 
   // ── Spawn a target ────────────────────────────────────────────────────────
   const spawnTarget = useCallback((now: number) => {

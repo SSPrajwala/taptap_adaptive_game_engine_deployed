@@ -14,12 +14,18 @@ interface Props {
   onVictory?:   () => void
 }
 
+// Motion game plugins manage their own end screen — the engine should
+// auto-advance to the next question without requiring a manual "Next" click.
+const MOTION_PLUGINS = new Set(["tapblitz", "binaryrunner"])
+
 export const GameRenderer: React.FC<Props> = ({ config, onBack, onCorrect, onWrong, onVictory }) => {
   const {
     state, engine, currentQuestion, lastResult,
     isShowingHint, timeRemaining,
     handleAnswer, handleHint, send,
   } = useGameEngine(config)
+
+  const isMotionGame = MOTION_PLUGINS.has(config.plugin)
 
   const { user, token } = useAuth()
 
@@ -54,6 +60,25 @@ export const GameRenderer: React.FC<Props> = ({ config, onBack, onCorrect, onWro
       setTimeTaken(Math.round((Date.now() - gameStartRef.current) / 1000))
     }
   }, [state.status])
+
+  // ── Motion game auto-advance ───────────────────────────────────────────────
+  // After a motion game wave ends (answered → true), automatically fire
+  // NEXT_QUESTION after 2.4s so the plugin's own result screen has time to show.
+  // This means players never need to manually click "Next →" between waves.
+  const answeredRef = useRef(false)
+  useEffect(() => {
+    if (!isMotionGame) return
+    const answered = currentQuestion ? state.answeredIds.has(currentQuestion.id) : false
+    if (answered && !answeredRef.current) {
+      answeredRef.current = true
+      const t = setTimeout(() => {
+        answeredRef.current = false
+        send({ type: "NEXT_QUESTION" })
+      }, 2400)
+      return () => clearTimeout(t)
+    }
+    if (!answered) answeredRef.current = false
+  })
 
   const plugin = pluginRegistry.get(config.plugin)
   if (!plugin) {
@@ -251,7 +276,9 @@ export const GameRenderer: React.FC<Props> = ({ config, onBack, onCorrect, onWro
           timeRemaining={timeRemaining}
         />
       </div>
-      {answered && (
+      {/* Motion games auto-advance — no manual Next button needed.
+          Regular games show the continue bar with the feedback toast. */}
+      {answered && !isMotionGame && (
         <div className="gr-continue">
           {lastResult && (
             <span className={`result-toast ${lastResult.correct ? "toast-ok" : "toast-fail"}`}>

@@ -188,12 +188,13 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
     return () => window.removeEventListener("keydown", onKey)
   }, [started])
 
-  // ── Countdown ─────────────────────────────────────────────────────────────
+  // ── Countdown — pauses when How-to-Play modal is open ────────────────────
   useEffect(() => {
     if (countDown <= 0) { setStarted(true); return }
+    if (showHelp) return              // ← pause while modal is visible
     const t = setTimeout(() => setCountDown(c => c - 1), 1000)
     return () => clearTimeout(t)
-  }, [countDown])
+  }, [countDown, showHelp])
 
   // ── End run ────────────────────────────────────────────────────────────────
   const endRun = useCallback(() => {
@@ -416,8 +417,8 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
         const wrongX = perspX(c.answer === 0 ? 1 : 0, c.z)
         const cy     = perspY(c.z) - boxH / 2
 
-        // Show correct/wrong lane colour only when close
-        const reveal = c.z < FAR_Z * 0.55
+        // Reveal correct/wrong colour only in the last 28% of track (just before impact)
+        const reveal = c.z < FAR_Z * 0.28
 
         // Wrong lane block — dark red fill, vivid red border
         drawBlock(ctx, wrongX, cy, boxW, boxH,
