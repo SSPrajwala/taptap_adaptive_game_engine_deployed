@@ -74,6 +74,18 @@ export interface TapBlitzQuestion extends BaseQuestion {
   maxMisses: number
 }
 
+// ── Binary Runner (3-lane endless runner with logic gate challenges) ──────────
+export interface BinaryRunnerQuestion extends BaseQuestion {
+  type: "binaryrunner"
+  instruction:    string
+  duration:       number    // stage seconds
+  initialSpeed:   number    // units/sec (try 60)
+  maxSpeed:       number    // speed cap (try 180)
+  speedRampPerSec: number   // speed increase per second (try 2)
+  spawnInterval:  number    // seconds between obstacles (try 2.8)
+  operations:     string[]  // e.g. ["AND","OR","XOR","NAND","NOR"]
+}
+
 export type Question =
   | QuizQuestion
   | PuzzleQuestion
@@ -82,6 +94,7 @@ export type Question =
   | SudokuQuestion
   | WordBuilderQuestion
   | TapBlitzQuestion
+  | BinaryRunnerQuestion
 
 export interface Level {
   id: string

@@ -64,8 +64,17 @@ export function useMultiplayerRoom() {
   useEffect(() => {
     const s = getSocket()
 
-    const onConnect    = () => { setConnected(true);  setMySocketId(s.id ?? "") }
-    const onDisconnect = () => { setConnected(false) }
+    const onConnect      = () => {
+      setConnected(true)
+      setMySocketId(s.id ?? "")
+      // ← THE BUG: phase was never advanced after connect; stays stuck at "connecting"
+      setPhase(prev => prev === "connecting" ? "lobby" : prev)
+    }
+    const onDisconnect   = () => { setConnected(false) }
+    const onConnectError = () => {
+      setPhase("idle")
+      setError("Cannot reach multiplayer server. Make sure the backend is running (npm run dev in /backend).")
+    }
 
     const onCreated  = ({ room: r }: { room: RoomState }) => {
       setRoom(r); roomCodeRef.current = r.code; setPhase("lobby")
@@ -97,6 +106,7 @@ export function useMultiplayerRoom() {
 
     s.on("connect",          onConnect)
     s.on("disconnect",       onDisconnect)
+    s.on("connect_error",    onConnectError)
     s.on("room:created",     onCreated)
     s.on("room:joined",      onJoined)
     s.on("room:updated",     onUpdated)
@@ -110,6 +120,7 @@ export function useMultiplayerRoom() {
     return () => {
       s.off("connect",          onConnect)
       s.off("disconnect",       onDisconnect)
+      s.off("connect_error",    onConnectError)
       s.off("room:created",     onCreated)
       s.off("room:joined",      onJoined)
       s.off("room:updated",     onUpdated)

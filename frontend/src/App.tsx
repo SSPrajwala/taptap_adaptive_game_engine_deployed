@@ -25,6 +25,7 @@ import emojiMemoryRaw    from "./games/emoji-memory.json"
 import sudokuRaw         from "./games/sudoku.json"
 import wordbuilderRaw    from "./games/wordbuilder.json"
 import tapblitzRaw       from "./games/tapblitz.json"
+import binaryrunnerRaw   from "./games/binaryrunner.json"
 
 import "./plugins"
 import "./styles.css"
@@ -41,6 +42,7 @@ const STATIC_GAMES: GameConfig[] = [
   sudokuRaw         as unknown as GameConfig,
   wordbuilderRaw    as unknown as GameConfig,
   tapblitzRaw       as unknown as GameConfig,
+  binaryrunnerRaw   as unknown as GameConfig,
 ]
 
 const PLUGIN_COLORS: Record<string, string> = {
@@ -50,7 +52,8 @@ const PLUGIN_COLORS: Record<string, string> = {
   memory:      "linear-gradient(135deg,#22FFAA,#00D4FF)",
   sudoku:      "linear-gradient(135deg,#FFD700,#FF8C00)",
   wordbuilder: "linear-gradient(135deg,#FF2D78,#A855F7)",
-  tapblitz:    "linear-gradient(135deg,#FFD700,#FF2D78)",
+  tapblitz:      "linear-gradient(135deg,#FFD700,#FF2D78)",
+  binaryrunner:  "linear-gradient(135deg,#00D4FF,#A855F7)",
 }
 
 const PLUGIN_TEXT: Record<string, string> = {
@@ -60,7 +63,8 @@ const PLUGIN_TEXT: Record<string, string> = {
   memory:      "#22FFAA",
   sudoku:      "#FFD700",
   wordbuilder: "#FF2D78",
-  tapblitz:    "#FFD700",
+  tapblitz:     "#FFD700",
+  binaryrunner: "#00D4FF",
 }
 
 // Logo image used in header — actual logo.png asset
@@ -266,7 +270,7 @@ function AppInner() {
               </p>
             </div>
           </div>
-          <p style={{ marginTop: "10px" }}>Adaptive · Plugin-based · JSON-driven · 7 Game Types · Multiplayer</p>
+          <p style={{ marginTop: "10px" }}>Adaptive · Plugin-based · JSON-driven · 8 Game Types · Multiplayer</p>
         </header>
 
         <nav className="app-nav animate-in stagger-1">
