@@ -193,7 +193,7 @@ export const TopRibbon: React.FC<Props> = ({
           {user && (
             <button
               onClick={onShowProfile}
-              title={`${user.name} — View profile`}
+              title={`${user.username} — View profile`}
               style={{
                 display:      "flex",
                 alignItems:   "center",
@@ -230,7 +230,7 @@ export const TopRibbon: React.FC<Props> = ({
                 color:        "#fff",
                 flexShrink:   0,
               }}>
-                {initials(user.name)}
+                {initials(user.username)}
               </div>
               {/* Name */}
               <span style={{
@@ -243,7 +243,7 @@ export const TopRibbon: React.FC<Props> = ({
                 textOverflow:"ellipsis",
                 whiteSpace:  "nowrap",
               }}>
-                {user.name.split(" ")[0]}
+                {user.username.split(" ")[0]}
               </span>
             </button>
           )}

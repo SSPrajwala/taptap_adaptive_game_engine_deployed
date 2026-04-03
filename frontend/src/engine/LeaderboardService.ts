@@ -2,7 +2,8 @@ import type { LeaderboardEntry } from "../types/engine.types"
 
 const KEY     = "taptap_leaderboard_v2"
 const MAX     = 100
-const API_URL = "http://localhost:3001/api/leaderboard"
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api"
+const API_URL  = `${API_BASE}/leaderboard`
 
 export class LeaderboardService {
 
@@ -80,6 +81,7 @@ export class LeaderboardService {
   static async submitToAPI(
     entry: LeaderboardEntry,
     authToken?: string | null,
+    learningOutcomes?: string[],
   ): Promise<{ success: boolean; message: string; rank?: number }> {
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" }
@@ -89,14 +91,17 @@ export class LeaderboardService {
         method:  "POST",
         headers,
         body:    JSON.stringify({
-          playerName: entry.playerName,
-          gameId:     entry.gameId,
-          gameTitle:  entry.gameTitle,
-          score:      entry.score,
-          accuracy:   entry.accuracy,
-          timeTaken:  entry.timeTaken,
-          difficulty: entry.difficulty,
-          timestamp:  entry.timestamp,
+          playerName:      entry.playerName,
+          gameId:          entry.gameId,
+          gameTitle:       entry.gameTitle,
+          score:           entry.score,
+          accuracy:        entry.accuracy,
+          totalAnswered:   entry.totalAnswered,
+          correctCount:    entry.totalAnswered ? Math.round(entry.accuracy * entry.totalAnswered) : 0,
+          timeTaken:       entry.timeTaken,
+          difficulty:      entry.difficulty,
+          timestamp:       entry.timestamp,
+          learningOutcomes: learningOutcomes ?? [],
         }),
       })
 

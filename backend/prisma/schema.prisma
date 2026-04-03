@@ -1,0 +1,164 @@
+// TapTap Game Engine — Prisma Schema
+// Database: Supabase PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+enum Role {
+  user
+  admin
+}
+
+enum Visibility {
+  public
+  private
+}
+
+enum AiType {
+  quiz
+  flashcard
+  explanation
+  report
+  lesson
+  analysis
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(user)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  profile       UserProfile?
+  games         Game[]
+  sessions      GameSession[]
+  skillProgress UserSkillProgress[]
+  aiGenerations AiGeneration[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id            String   @id @default(uuid())
+  userId        String   @unique @map("user_id")
+  targetCompany String?  @map("target_company")
+  campusYear    String?  @map("campus_year")
+  branch        String?
+  college       String?
+  avatarUrl     String?  @map("avatar_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+// ── Games ─────────────────────────────────────────────────────────────────────
+
+model Game {
+  id               String     @id
+  title            String
+  description      String?
+  plugin           String
+  version          String     @default("1.0.0")
+  config           Json                              // Full GameConfig JSON
+  visibility       Visibility @default(public)
+  createdBy        String?    @map("created_by")    // null = system/admin seeded
+  learningOutcomes String[]   @map("learning_outcomes")
+  aptitudeTags     String[]   @map("aptitude_tags")
+  isAiGenerated    Boolean    @default(false) @map("is_ai_generated")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  creator  User?         @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  sessions GameSession[]
+
+  @@map("games")
+}
+
+// ── Game Sessions (replaces localStorage leaderboard) ─────────────────────────
+
+model GameSession {
+  id            String   @id @default(uuid())
+  userId        String?  @map("user_id")
+  gameId        String   @map("game_id")
+  score         Int      @default(0)
+  accuracy      Decimal  @default(0) @db.Decimal(5, 2)
+  totalAnswered Int      @default(0) @map("total_answered")
+  correctCount  Int      @default(0) @map("correct_count")
+  timeTaken     Int      @default(0) @map("time_taken")    // seconds
+  difficulty    String?
+  completed     Boolean  @default(false)
+  playerName    String?  @map("player_name")
+  college       String?
+  gameTitle     String?  @map("game_title")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  game Game  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@map("game_sessions")
+}
+
+// ── User Skill Progress ────────────────────────────────────────────────────────
+// Tracks the user's level (1–5) per skill area, updated after every game session
+
+model UserSkillProgress {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  skillArea   String   @map("skill_area")  // 'logical_reasoning','algorithms', etc.
+  level       Int      @default(1)          // 1–5
+  xp          Int      @default(0)          // experience points toward next level
+  gamesPlayed Int      @default(0) @map("games_played")
+  accuracy    Decimal  @default(0) @db.Decimal(5, 2)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillArea])
+  @@map("user_skill_progress")
+}
+
+// ── AI Generations ────────────────────────────────────────────────────────────
+// Every AI call is stored — user can revisit past generations
+
+model AiGeneration {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  type       AiType
+  prompt     String
+  result     Json                         // the full AI response
+  gameId     String?  @map("game_id")    // set if the generation was saved as a game
+  tokensUsed Int?     @map("tokens_used")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_generations")
+}
+
+// ── Admins ────────────────────────────────────────────────────────────────────
+// Separate from users — admins have name+accessCode auth (existing system)
+
+model Admin {
+  id         String   @id @default(uuid())
+  name       String   @unique
+  accessCode String   @map("access_code")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("admins")
+}

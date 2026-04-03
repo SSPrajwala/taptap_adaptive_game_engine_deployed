@@ -143,6 +143,12 @@ export interface GameConfig {
     accentColor?: string
     emoji?: string
   }
+  // ── Database / ownership fields (populated from API) ─────────────────────
+  visibility?:       "public" | "private"
+  createdBy?:        string | null   // userId of creator, null = admin/system
+  learningOutcomes?: string[]        // e.g. ["logical_reasoning","algorithms"]
+  aptitudeTags?:     string[]        // e.g. ["TCS_NQT","Infosys"]
+  isAiGenerated?:    boolean
 }
 
 export interface PlayerStats {

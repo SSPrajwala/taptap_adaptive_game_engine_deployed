@@ -6,6 +6,8 @@ interface Props {
   state?:     DeerState
   size?:      number
   showLabel?: boolean
+  /** Called when the mascot is clicked — used to open BlackbuckAI panel */
+  onAIClick?: () => void
 }
 
 const DeerSVG: React.FC<{ state: DeerState; size: number }> = ({ state, size }) => {
@@ -173,7 +175,7 @@ const DeerSVG: React.FC<{ state: DeerState; size: number }> = ({ state, size }) 
   )
 }
 
-export const DeerMascot: React.FC<Props> = ({ state = "idle", size = 90, showLabel = false }) => {
+export const DeerMascot: React.FC<Props> = ({ state = "idle", size = 90, showLabel = false, onAIClick }) => {
   const [currentState, setCurrentState] = useState<DeerState>(state)
 
   useEffect(() => {
@@ -221,7 +223,37 @@ export const DeerMascot: React.FC<Props> = ({ state = "idle", size = 90, showLab
           {labels[currentState]}
         </div>
       )}
-      <div style={{ position: "relative", width: size + 20, height: size + 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+
+      {/* AI hint tooltip — shown above the mascot when onAIClick is set */}
+      {onAIClick && currentState === "idle" && (
+        <div
+          title="Chat with Blackbuck AI"
+          style={{
+            background: "rgba(0,212,255,0.15)",
+            border: "1px solid rgba(0,212,255,0.4)",
+            borderRadius: "99px", padding: "3px 10px",
+            fontSize: "0.62rem", fontFamily: "Orbitron, monospace",
+            fontWeight: 700, color: "#00D4FF",
+            letterSpacing: "0.08em", cursor: "pointer",
+            whiteSpace: "nowrap",
+            animation: "pulse 2.5s ease-in-out infinite",
+          }}
+          onClick={onAIClick}
+        >
+          🤖 ASK AI
+        </div>
+      )}
+
+      <div
+        onClick={onAIClick}
+        style={{
+          position: "relative", width: size + 20, height: size + 20,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: onAIClick ? "pointer" : "default",
+          transition: "transform 0.2s",
+        }}
+        title={onAIClick ? "Click to chat with Blackbuck AI" : undefined}
+      >
         <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} viewBox="0 0 110 110" xmlns="http://www.w3.org/2000/svg">
           <polygon points="55,5 100,30 100,80 55,105 10,80 10,30"
             fill={hexColors[currentState]}

@@ -99,10 +99,12 @@ export const SignInOverlay: React.FC<Props> = ({ open, onClose }) => {
   const [siPassword, setSiPassword] = useState("")
 
   // Sign Up state
-  const [suName,     setSuName]     = useState("")
-  const [suEmail,    setSuEmail]    = useState("")
-  const [suPassword, setSuPassword] = useState("")
-  const [suCollege,  setSuCollege]  = useState("")
+  const [suName,          setSuName]          = useState("")
+  const [suEmail,         setSuEmail]         = useState("")
+  const [suPassword,      setSuPassword]      = useState("")
+  const [suCollege,       setSuCollege]       = useState("")
+  const [suBranch,        setSuBranch]        = useState("")
+  const [suTargetCompany, setSuTargetCompany] = useState("")
 
   const [error,   setError]   = useState("")
   const [loading, setLoading] = useState(false)
@@ -128,7 +130,14 @@ export const SignInOverlay: React.FC<Props> = ({ open, onClose }) => {
     if (!suName || !suEmail || !suPassword) { setError("Name, email and password are required."); return }
     if (suPassword.length < 6) { setError("Password must be at least 6 characters."); return }
     setLoading(true)
-    const result = await register(suName, suEmail, suPassword, suCollege)
+    const result = await register({
+      name:          suName,
+      email:         suEmail,
+      password:      suPassword,
+      college:       suCollege   || undefined,
+      branch:        suBranch    || undefined,
+      targetCompany: suTargetCompany || undefined,
+    })
     setLoading(false)
     if (result.error) { setError(result.error); return }
     setSuccess("Account created! Welcome to TapTap 🚀")
@@ -221,7 +230,9 @@ export const SignInOverlay: React.FC<Props> = ({ open, onClose }) => {
           <Field label="Full Name"   value={suName}     onChange={setSuName}     placeholder="Your name" required />
           <Field label="Email"       type="email"       value={suEmail}    onChange={setSuEmail}    placeholder="you@college.edu" required />
           <Field label="Password"    type="password"    value={suPassword} onChange={setSuPassword} placeholder="Min 6 characters" required />
-          <Field label="College (optional)" value={suCollege}  onChange={setSuCollege}  placeholder="e.g. IIT Bombay" />
+          <Field label="College (optional)"       value={suCollege}       onChange={setSuCollege}       placeholder="e.g. KITS Warangal" />
+          <Field label="Branch (optional)"        value={suBranch}        onChange={setSuBranch}        placeholder="e.g. CSE, ECE, IT" />
+          <Field label="Target Company (optional)" value={suTargetCompany} onChange={setSuTargetCompany} placeholder="e.g. TCS, Infosys, Wipro" />
           <PrimaryBtn onClick={handleSignUp} loading={loading}>Create Account →</PrimaryBtn>
           <div style={{ textAlign: "center", marginTop: "18px", color: "rgba(232,224,255,0.35)", fontFamily: "Exo 2, sans-serif", fontSize: "0.78rem" }}>
             Already registered?{" "}
@@ -244,8 +255,8 @@ export const SignInOverlay: React.FC<Props> = ({ open, onClose }) => {
         fontSize:     "0.72rem",
         lineHeight:   1.5,
       }}>
-        🔐 Your data is stored locally on the TapTap backend.<br />
-        Make sure the backend is running: <code style={{ color: "rgba(168,85,247,0.5)" }}>cd backend &amp;&amp; npm start</code>
+        🔐 Your data is securely stored in Supabase PostgreSQL.<br />
+        Sign in to unlock AI game generation, skill tracking, and Blackbuck AI companion.
       </div>
     </SideOverlay>
   )

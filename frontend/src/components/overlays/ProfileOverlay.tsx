@@ -34,7 +34,7 @@ export const ProfileOverlay: React.FC<Props> = ({ open, onClose }) => {
   const scores = useMemo<LeaderboardEntry[]>(() => {
     if (!open || !user) return []
     return LeaderboardService.getAll()
-      .filter(e => e.playerName.toLowerCase() === user.name.toLowerCase())
+      .filter(e => e.playerName.toLowerCase() === (user.username ?? "").toLowerCase())
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 8)
   }, [open, user])
@@ -56,7 +56,7 @@ export const ProfileOverlay: React.FC<Props> = ({ open, onClose }) => {
       open={open}
       onClose={onClose}
       title="Profile"
-      subtitle={user.college || "TapTap Player"}
+      subtitle={user.profile?.college || "TapTap Player"}
       width={420}
     >
       {/* Avatar + info card */}
@@ -87,7 +87,7 @@ export const ProfileOverlay: React.FC<Props> = ({ open, onClose }) => {
           flexShrink:   0,
           boxShadow:    "0 0 20px rgba(168,85,247,0.35)",
         }}>
-          {initials(user.name)}
+          {initials(user.username ?? "")}
         </div>
 
         {/* Name / email */}
@@ -102,14 +102,14 @@ export const ProfileOverlay: React.FC<Props> = ({ open, onClose }) => {
             textOverflow:"ellipsis",
             whiteSpace: "nowrap",
           }}>
-            {user.name}
+            {user.username}
           </div>
           <div style={{ color: "rgba(168,85,247,0.7)", fontFamily: "Exo 2, sans-serif", fontSize: "0.78rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {user.email}
           </div>
-          {user.college && (
+          {user.profile?.college && (
             <div style={{ color: "rgba(232,224,255,0.4)", fontFamily: "Exo 2, sans-serif", fontSize: "0.72rem", marginTop: "2px" }}>
-              🏫 {user.college}
+              🏫 {user.profile.college}
             </div>
           )}
         </div>

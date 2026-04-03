@@ -4,6 +4,7 @@ import { pluginRegistry }     from "../plugins"
 import { useGameEngine }      from "../hooks/useGameEngine"
 import { LeaderboardService } from "../engine/LeaderboardService"
 import { Confetti }           from "./ui/Confetti"
+import { BlackbuckAI }        from "./ui/BlackbuckAI"
 import { useAuth }            from "../context/AuthContext"
 
 interface Props {
@@ -40,11 +41,17 @@ export const GameRenderer: React.FC<Props> = ({ config, onBack, onCorrect, onWro
     }
   }), [engine, onCorrect, onWrong, onVictory])
 
-  // Pre-fill name from logged-in user
-  const [playerName, setPlayerName] = useState(user?.name ?? "")
+  // Pre-fill name from logged-in user (username field in new schema)
+  const [playerName, setPlayerName] = useState((user as { username?: string } | null)?.username ?? "")
   const [scoreSaved, setScoreSaved] = useState(false)
   const [apiStatus,  setApiStatus]  = useState<string | null>(null)
   const [saving,     setSaving]     = useState(false)
+
+  // ── Blackbuck AI explain panel ─────────────────────────────────────────────
+  const [aiOpen,       setAiOpen]       = useState(false)
+  const [explainCtx,   setExplainCtx]   = useState<{
+    concept: string; question?: string; correctAnswer?: string; studentAnswer?: string
+  } | undefined>(undefined)
 
   const gameStartRef = useRef<number>(0)
   const [timeTaken,  setTimeTaken]  = useState(0)
@@ -108,7 +115,7 @@ export const GameRenderer: React.FC<Props> = ({ config, onBack, onCorrect, onWro
       timeTaken,
       difficulty:    state.stats.difficulty,
     })
-    const result = await LeaderboardService.submitToAPI(entry, token)
+    const result = await LeaderboardService.submitToAPI(entry, token, config.learningOutcomes)
     setApiStatus(result.message)
     setScoreSaved(true)
     setSaving(false)
@@ -285,11 +292,46 @@ export const GameRenderer: React.FC<Props> = ({ config, onBack, onCorrect, onWro
               {lastResult.feedback}
             </span>
           )}
-          <button className="btn-primary btn-sm" onClick={() => send({ type: "NEXT_QUESTION" })}>
-            {doneQ + 1 < totalQ ? "Next →" : "Finish Level →"}
-          </button>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            {/* "Why?" AI explanation button — only shown after a wrong answer when logged in */}
+            {token && lastResult && !lastResult.correct && (
+              <button
+                className="btn-ghost btn-sm"
+                title="Ask Blackbuck AI to explain this"
+                onClick={() => {
+                  const q = currentQuestion as Question & { prompt?: string; answer?: string }
+                  setExplainCtx({
+                    concept:       config.title,
+                    question:      q.prompt ?? "",
+                    correctAnswer: q.answer ?? "",
+                    studentAnswer: lastResult.feedback,
+                  })
+                  setAiOpen(true)
+                }}
+                style={{
+                  background: "rgba(0,212,255,0.12)",
+                  border: "1px solid rgba(0,212,255,0.3)",
+                  color: "#00D4FF",
+                  fontFamily: "Orbitron, monospace",
+                  fontSize: "0.68rem",
+                }}
+              >
+                🤖 Why?
+              </button>
+            )}
+            <button className="btn-primary btn-sm" onClick={() => send({ type: "NEXT_QUESTION" })}>
+              {doneQ + 1 < totalQ ? "Next →" : "Finish Level →"}
+            </button>
+          </div>
         </div>
       )}
+
+      {/* Blackbuck AI explanation panel */}
+      <BlackbuckAI
+        isOpen={aiOpen}
+        onClose={() => { setAiOpen(false); setExplainCtx(undefined) }}
+        explainContext={explainCtx}
+      />
     </div>
   )
 }

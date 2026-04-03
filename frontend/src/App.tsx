@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, useCallback } from "react"
 import logoSrc                        from "./assets/logo.png"
 import { AuthProvider, useAuth }      from "./context/AuthContext"
 import { GameRenderer }               from "./components/GameRenderer"
@@ -6,6 +6,7 @@ import { LeaderboardPage }            from "./pages/LeaderboardPage"
 import { AdminPanel }                 from "./pages/AdminPanel"
 import { SplashScreen }               from "./components/ui/SplashScreen"
 import { DeerMascot }                 from "./components/ui/DeerMascot"
+import { BlackbuckAI }                from "./components/ui/BlackbuckAI"
 import { useDeerMascot }              from "./hooks/useDeerMascot"
 import { HexBackground }              from "./components/ui/HexBackground"
 import { TopRibbon }                  from "./components/ui/TopRibbon"
@@ -30,6 +31,8 @@ import binaryrunnerRaw   from "./games/binaryrunner.json"
 import "./plugins"
 import "./styles.css"
 
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api"
+
 type Page    = "library" | "game" | "leaderboard" | "admin" | "multiplayer"
 type Overlay = "about" | "docs" | "signin" | "profile" | "adminAuth" | null
 
@@ -52,8 +55,8 @@ const PLUGIN_COLORS: Record<string, string> = {
   memory:      "linear-gradient(135deg,#22FFAA,#00D4FF)",
   sudoku:      "linear-gradient(135deg,#FFD700,#FF8C00)",
   wordbuilder: "linear-gradient(135deg,#FF2D78,#A855F7)",
-  tapblitz:      "linear-gradient(135deg,#FFD700,#FF2D78)",
-  binaryrunner:  "linear-gradient(135deg,#00D4FF,#A855F7)",
+  tapblitz:    "linear-gradient(135deg,#FFD700,#FF2D78)",
+  binaryrunner:"linear-gradient(135deg,#00D4FF,#A855F7)",
 }
 
 const PLUGIN_TEXT: Record<string, string> = {
@@ -63,21 +66,18 @@ const PLUGIN_TEXT: Record<string, string> = {
   memory:      "#22FFAA",
   sudoku:      "#FFD700",
   wordbuilder: "#FF2D78",
-  tapblitz:     "#FFD700",
-  binaryrunner: "#00D4FF",
+  tapblitz:    "#FFD700",
+  binaryrunner:"#00D4FF",
 }
 
-// Logo image used in header — actual logo.png asset
 const AppLogoImg = () => (
   <img
     src={logoSrc}
     alt="TapTap Game Engine"
     style={{
-      width:     "64px",
-      height:    "64px",
-      objectFit: "contain",
+      width: "64px", height: "64px", objectFit: "contain",
       animation: "logoPulse 3s ease-in-out infinite",
-      filter:    "drop-shadow(0 0 12px rgba(168,85,247,0.8))",
+      filter: "drop-shadow(0 0 12px rgba(168,85,247,0.8))",
     }}
   />
 )
@@ -85,62 +85,109 @@ const AppLogoImg = () => (
 // ── Inner app ─────────────────────────────────────────────────────────────────
 
 function AppInner() {
-  const { user, isLoggedIn } = useAuth()
+  const { user, token, isLoggedIn } = useAuth()
 
-  const [showSplash,  setShowSplash]  = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [page,        setPage]        = useState<Page>("library")
-  const [activeGame,  setActiveGame]  = useState<GameConfig | null>(null)
-  const [overlay,     setOverlay]     = useState<Overlay>(null)
+  const [showSplash,   setShowSplash]   = useState(true)
+  const [searchQuery,  setSearchQuery]  = useState("")
+  const [page,         setPage]         = useState<Page>("library")
+  const [activeGame,   setActiveGame]   = useState<GameConfig | null>(null)
+  const [overlay,      setOverlay]      = useState<Overlay>(null)
+  const [aiOpen,       setAiOpen]       = useState(false)
 
-  // ── Admin auth state (session-only — cleared on tab close) ──────────────────
-  const [adminToken,  setAdminToken]  = useState<string | null>(null)
-  const [adminName,   setAdminName]   = useState<string>("")
+  // Admin auth
+  const [adminToken, setAdminToken] = useState<string | null>(null)
+  const [adminName,  setAdminName]  = useState<string>("")
   const isAdmin = adminToken !== null
 
-  // ── Games — start with static, merge backend-saved overrides after mount ───
-  const [games, setGames] = useState<GameConfig[]>(STATIC_GAMES)
+  // ── Games — public always + user's private when logged in ──────────────────
+  const [publicGames, setPublicGames] = useState<GameConfig[]>(STATIC_GAMES)
+  const [myGames,     setMyGames]     = useState<GameConfig[]>([])
 
-  useEffect(() => {
-    fetch((import.meta.env.VITE_API_URL ?? "http://localhost:3001/api"), { signal: AbortSignal.timeout(4000) })
-      .then(r => r.ok ? r.json() : [])
-      .then((backendGames: GameConfig[]) => {
-        if (!backendGames.length) return
-        // Merge: backend versions override static, keeping any static games not in backend
-        setGames(prev => prev.map(g => backendGames.find(b => b.id === g.id) ?? g))
-      })
-      .catch(() => { /* backend not running — static games are fine */ })
-  }, [])
+  const loadGames = useCallback(async () => {
+    try {
+      const headers: HeadersInit = token ? { "Authorization": `Bearer ${token}` } : {}
+      const res  = await fetch(`${API}/games`, { headers, signal: AbortSignal.timeout(5000) })
+      if (!res.ok) return
+      const all: GameConfig[] = await res.json()
+
+      const pub  = all.filter(g => g.visibility !== "private" || !g.createdBy)
+      const mine = all.filter(g => g.visibility === "private" && g.createdBy === user?.id)
+
+      if (pub.length)  setPublicGames(pub)
+      if (mine.length) setMyGames(mine)
+    } catch {
+      /* backend not running — static games are fine */
+    }
+  }, [token, user?.id])
+
+  useEffect(() => { loadGames() }, [loadGames])
 
   const { deerState, triggerCorrect, triggerWrong, triggerVictory } = useDeerMascot()
 
-  const filteredGames = useMemo(() => {
-    if (!searchQuery.trim()) return games
+  const allGames = useMemo(() => [...publicGames, ...myGames], [publicGames, myGames])
+
+  const filteredPublic = useMemo(() => {
+    if (!searchQuery.trim()) return publicGames
     const q = searchQuery.toLowerCase()
-    return games.filter(g =>
+    return publicGames.filter(g =>
       g.title.toLowerCase().includes(q) ||
       g.plugin.toLowerCase().includes(q) ||
-      g.description.toLowerCase().includes(q)
+      (g.description ?? "").toLowerCase().includes(q)
     )
-  }, [games, searchQuery])
+  }, [publicGames, searchQuery])
+
+  const filteredMy = useMemo(() => {
+    if (!searchQuery.trim()) return myGames
+    const q = searchQuery.toLowerCase()
+    return myGames.filter(g =>
+      g.title.toLowerCase().includes(q) ||
+      (g.description ?? "").toLowerCase().includes(q)
+    )
+  }, [myGames, searchQuery])
 
   const openOverlay  = (o: Overlay) => setOverlay(o)
   const closeOverlay = () => setOverlay(null)
 
-  // When admin nav button is clicked:
   const handleAdminClick = () => {
-    if (isAdmin) {
-      setPage("admin")  // already authenticated this session
-    } else {
-      openOverlay("adminAuth")
-    }
+    if (isAdmin) setPage("admin")
+    else         openOverlay("adminAuth")
   }
 
-  const handleAdminSuccess = (token: string, name: string) => {
-    setAdminToken(token)
-    setAdminName(name)
-    setPage("admin")
+  const handleAdminSuccess = (t: string, n: string) => {
+    setAdminToken(t); setAdminName(n); setPage("admin")
   }
+
+  // Called when AI generates a game and user clicks "Save to My Games"
+  const handleGameGenerated = useCallback(async (config: Record<string, unknown>) => {
+    if (!token) { openOverlay("signin"); return }
+    try {
+      const res = await fetch(`${API}/games`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body:    JSON.stringify({
+          id:              config.id,
+          title:           config.title,
+          description:     config.description ?? "",
+          plugin:          config.plugin,
+          version:         config.version ?? "1.0.0",
+          config,
+          isAiGenerated:   true,
+          learningOutcomes: [],
+          aptitudeTags:    [],
+        }),
+      })
+      if (res.ok) {
+        await loadGames()
+        alert(`✅ "${config.title}" saved to My Games!`)
+        setAiOpen(false)
+      } else {
+        const d = await res.json()
+        alert(`Save failed: ${d.error}`)
+      }
+    } catch {
+      alert("Save failed. Please try again.")
+    }
+  }, [token, loadGames])
 
   const ribbonProps = {
     onSearchGame:  setSearchQuery,
@@ -151,17 +198,21 @@ function AppInner() {
     user,
   }
 
-  // Shared overlays
   const overlays = (
     <>
-      <AboutOverlay      open={overlay === "about"}     onClose={closeOverlay} />
-      <DocsOverlay       open={overlay === "docs"}       onClose={closeOverlay} />
-      <SignInOverlay     open={overlay === "signin"}     onClose={closeOverlay} />
-      <ProfileOverlay    open={overlay === "profile"}    onClose={closeOverlay} />
+      <AboutOverlay     open={overlay === "about"}     onClose={closeOverlay} />
+      <DocsOverlay      open={overlay === "docs"}       onClose={closeOverlay} />
+      <SignInOverlay    open={overlay === "signin"}     onClose={closeOverlay} />
+      <ProfileOverlay   open={overlay === "profile"}    onClose={closeOverlay} />
       <AdminAuthOverlay
         open={overlay === "adminAuth"}
         onClose={closeOverlay}
         onSuccess={handleAdminSuccess}
+      />
+      <BlackbuckAI
+        isOpen={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onGameGenerated={isLoggedIn ? handleGameGenerated : undefined}
       />
     </>
   )
@@ -185,7 +236,7 @@ function AppInner() {
             onVictory={triggerVictory}
           />
         </div>
-        <DeerMascot state={deerState} showLabel />
+        <DeerMascot state={deerState} showLabel onAIClick={() => setAiOpen(true)} />
         {overlays}
       </div>
     )
@@ -198,9 +249,9 @@ function AppInner() {
         <HexBackground />
         <TopRibbon {...ribbonProps} />
         <div className="app-shell" style={{ paddingTop: "20px" }}>
-          <MultiplayerPage games={games} onBack={() => setPage("library")} />
+          <MultiplayerPage games={allGames} onBack={() => setPage("library")} />
         </div>
-        <DeerMascot state="idle" size={80} />
+        <DeerMascot state="idle" size={80} onAIClick={() => setAiOpen(true)} />
         {overlays}
       </div>
     )
@@ -215,14 +266,13 @@ function AppInner() {
         <div className="app-shell" style={{ paddingTop: "20px" }}>
           <LeaderboardPage onBack={() => setPage("library")} />
         </div>
-        {/* Leaderboard: neutral idle glow, not "victory" — no scores yet doesn't mean someone won */}
-        <DeerMascot state="idle" size={80} />
+        <DeerMascot state="idle" size={80} onAIClick={() => setAiOpen(true)} />
         {overlays}
       </div>
     )
   }
 
-  // ── Admin page (only reachable after admin auth) ───────────────────────────
+  // ── Admin page ─────────────────────────────────────────────────────────────
   if (page === "admin" && isAdmin) {
     return (
       <div style={{ minHeight: "100vh" }}>
@@ -230,9 +280,9 @@ function AppInner() {
         <TopRibbon {...ribbonProps} />
         <div className="app-shell" style={{ paddingTop: "20px" }}>
           <AdminPanel
-            games={games}
+            games={publicGames}
             onBack={() => setPage("library")}
-            onSave={setGames}
+            onSave={setPublicGames}
             adminToken={adminToken!}
             adminName={adminName}
           />
@@ -270,13 +320,20 @@ function AppInner() {
               </p>
             </div>
           </div>
-          <p style={{ marginTop: "10px" }}>Adaptive · Plugin-based · JSON-driven · 8 Game Types · Multiplayer</p>
+          <p style={{ marginTop: "10px" }}>
+            Adaptive · Plugin-based · JSON-driven · 8 Game Types · Multiplayer · AI-Powered
+          </p>
         </header>
 
         <nav className="app-nav animate-in stagger-1">
           <button className="nav-btn nav-btn-active">🎮 Games</button>
           <button className="nav-btn" onClick={() => setPage("multiplayer")}>🌐 Multiplayer</button>
           <button className="nav-btn" onClick={() => setPage("leaderboard")}>🏆 Leaderboard</button>
+          {isLoggedIn && (
+            <button className="nav-btn" onClick={() => setAiOpen(true)}>
+              🤖 AI Studio
+            </button>
+          )}
           <button
             className="nav-btn"
             onClick={handleAdminClick}
@@ -293,7 +350,7 @@ function AppInner() {
             border: "1px solid rgba(168,85,247,0.2)", borderRadius: "8px",
             fontSize: "0.82rem", color: "rgba(232,224,255,0.6)", fontFamily: "Exo 2, sans-serif",
           }}>
-            <span>🔍 Results for "<strong style={{ color: "#A855F7" }}>{searchQuery}</strong>" — {filteredGames.length} found</span>
+            <span>🔍 Results for "<strong style={{ color: "#A855F7" }}>{searchQuery}</strong>" — {filteredPublic.length + filteredMy.length} found</span>
             <button onClick={() => setSearchQuery("")}
               style={{ background: "transparent", color: "rgba(232,224,255,0.4)", fontSize: "0.8rem", marginLeft: "auto", cursor: "pointer", border: "none" }}>
               Clear ✕
@@ -301,53 +358,208 @@ function AppInner() {
           </div>
         )}
 
-        <div className="game-library">
-          {filteredGames.length === 0 ? (
-            <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "48px", color: "rgba(232,224,255,0.3)", fontFamily: "Orbitron, monospace", fontSize: "0.88rem" }}>
-              No games found for "{searchQuery}"
-            </div>
-          ) : filteredGames.map((game, i) => (
-            <div
-              key={game.id}
-              className={`game-card animate-in stagger-${Math.min(i + 2, 6)}`}
-              style={{
-                "--card-accent": PLUGIN_COLORS[game.plugin] ?? "var(--grad-brand)",
-                background: "rgba(10, 8, 30, 0.6)",
-                backdropFilter: "blur(20px) saturate(160%)",
-              } as React.CSSProperties}
-              onClick={() => { setActiveGame(game); setPage("game") }}
-            >
-              <div className="game-card-inner-glow" />
+        {/* ── My Games section (only if user is logged in and has private games) ── */}
+        {isLoggedIn && filteredMy.length > 0 && (
+          <section style={{ marginBottom: "32px" }}>
+            <div style={{
+              display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px",
+            }}>
+              <h2 style={{
+                fontFamily: "Orbitron, monospace", fontSize: "0.85rem", fontWeight: 800,
+                color: "#A855F7", margin: 0, letterSpacing: "0.1em",
+              }}>
+                🔒 MY GAMES
+              </h2>
               <div style={{
-                position: "absolute", top: 0, left: 0, right: 0, height: "40%",
-                background: "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%)",
-                borderRadius: "inherit", pointerEvents: "none",
+                flex: 1, height: 1,
+                background: "linear-gradient(90deg, rgba(168,85,247,0.4), transparent)",
               }} />
-              <div className="card-top">
-                <span className="card-emoji">{game.ui?.emoji ?? "🎮"}</span>
-                <span className="card-plugin-tag" style={{ color: PLUGIN_TEXT[game.plugin] ?? "#A855F7" }}>{game.plugin}</span>
+              <button
+                onClick={() => setAiOpen(true)}
+                style={{
+                  background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)",
+                  borderRadius: "20px", padding: "4px 12px",
+                  color: "#A855F7", fontSize: "0.72rem",
+                  fontFamily: "Orbitron, monospace", fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                + AI Generate
+              </button>
+            </div>
+            <GameGrid
+              games={filteredMy}
+              onPlay={game => { setActiveGame(game); setPage("game") }}
+              showPrivateBadge
+            />
+          </section>
+        )}
+
+        {/* ── Sign-in prompt for AI features ── */}
+        {!isLoggedIn && (
+          <div style={{
+            marginBottom: "20px", padding: "14px 20px",
+            background: "rgba(168,85,247,0.07)", border: "1px solid rgba(168,85,247,0.2)",
+            borderRadius: "12px", display: "flex", alignItems: "center", gap: "14px",
+          }}>
+            <div style={{ fontSize: "1.8rem" }}>🤖</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: "#A855F7", fontFamily: "Orbitron, monospace", fontSize: "0.78rem", fontWeight: 800 }}>
+                AI FEATURES UNLOCKED WITH SIGN-IN
               </div>
-              <h2 className="card-title">{game.title}</h2>
-              <p  className="card-desc">{game.description}</p>
-              <div className="card-footer">
-                <div className="card-meta">
-                  <span>📚 {game.levels.length} levels</span>
-                  <span>❓ {game.questions.length} questions</span>
-                </div>
-                <button className="btn-play"
-                  onClick={e => { e.stopPropagation(); setActiveGame(game); setPage("game") }}>
-                  Play →
-                </button>
+              <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.78rem", marginTop: "3px" }}>
+                Generate custom quizzes, get AI explanations, track skill progress, chat with Blackbuck
               </div>
             </div>
-          ))}
-        </div>
+            <button
+              onClick={() => openOverlay("signin")}
+              style={{
+                background: "linear-gradient(135deg, #A855F7, #7C3AED)",
+                border: "none", borderRadius: "8px",
+                padding: "8px 16px", color: "white",
+                fontFamily: "Orbitron, monospace", fontSize: "0.72rem",
+                fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              Sign In
+            </button>
+          </div>
+        )}
 
-        <Footer gameCount={games.length} questionCount={games.reduce((s, g) => s + g.questions.length, 0)} />
+        {/* ── Public Games section ── */}
+        <section>
+          <div style={{
+            display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px",
+          }}>
+            <h2 style={{
+              fontFamily: "Orbitron, monospace", fontSize: "0.85rem", fontWeight: 800,
+              color: "rgba(255,255,255,0.5)", margin: 0, letterSpacing: "0.1em",
+            }}>
+              🌐 ALL GAMES
+            </h2>
+            <div style={{
+              flex: 1, height: 1,
+              background: "linear-gradient(90deg, rgba(255,255,255,0.1), transparent)",
+            }} />
+          </div>
+
+          <GameGrid
+            games={filteredPublic}
+            onPlay={game => { setActiveGame(game); setPage("game") }}
+            searchQuery={searchQuery}
+          />
+        </section>
+
+        <Footer gameCount={publicGames.length} questionCount={publicGames.reduce((s, g) => s + g.questions.length, 0)} />
       </div>
 
-      <DeerMascot state={deerState} showLabel size={85} />
+      <DeerMascot
+        state={deerState}
+        showLabel
+        size={85}
+        onAIClick={isLoggedIn ? () => setAiOpen(true) : undefined}
+      />
       {overlays}
+    </div>
+  )
+}
+
+// ── GameGrid sub-component ────────────────────────────────────────────────────
+
+function GameGrid({
+  games, onPlay, searchQuery, showPrivateBadge,
+}: {
+  games:            GameConfig[]
+  onPlay:           (g: GameConfig) => void
+  searchQuery?:     string
+  showPrivateBadge?: boolean
+}) {
+  if (games.length === 0 && searchQuery) {
+    return (
+      <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "48px", color: "rgba(232,224,255,0.3)", fontFamily: "Orbitron, monospace", fontSize: "0.88rem" }}>
+        No games found for "{searchQuery}"
+      </div>
+    )
+  }
+
+  return (
+    <div className="game-library">
+      {games.map((game, i) => (
+        <div
+          key={game.id}
+          className={`game-card animate-in stagger-${Math.min(i + 2, 6)}`}
+          style={{
+            "--card-accent": PLUGIN_COLORS[game.plugin] ?? "var(--grad-brand)",
+            background: "rgba(10, 8, 30, 0.6)",
+            backdropFilter: "blur(20px) saturate(160%)",
+          } as React.CSSProperties}
+          onClick={() => onPlay(game)}
+        >
+          <div className="game-card-inner-glow" />
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0, height: "40%",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%)",
+            borderRadius: "inherit", pointerEvents: "none",
+          }} />
+          <div className="card-top">
+            <span className="card-emoji">{game.ui?.emoji ?? "🎮"}</span>
+            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+              {showPrivateBadge && (
+                <span style={{
+                  background: "rgba(168,85,247,0.2)", border: "1px solid rgba(168,85,247,0.4)",
+                  borderRadius: "4px", padding: "1px 6px",
+                  color: "#A855F7", fontSize: "0.6rem",
+                  fontFamily: "Orbitron, monospace", fontWeight: 700,
+                }}>
+                  PRIVATE
+                </span>
+              )}
+              {game.isAiGenerated && (
+                <span style={{
+                  background: "rgba(0,212,255,0.15)", border: "1px solid rgba(0,212,255,0.3)",
+                  borderRadius: "4px", padding: "1px 6px",
+                  color: "#00D4FF", fontSize: "0.6rem",
+                  fontFamily: "Orbitron, monospace", fontWeight: 700,
+                }}>
+                  AI
+                </span>
+              )}
+              <span className="card-plugin-tag" style={{ color: PLUGIN_TEXT[game.plugin] ?? "#A855F7" }}>
+                {game.plugin}
+              </span>
+            </div>
+          </div>
+          <h2 className="card-title">{game.title}</h2>
+          <p className="card-desc">{game.description}</p>
+
+          {/* Aptitude tags */}
+          {game.aptitudeTags && game.aptitudeTags.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
+              {game.aptitudeTags.slice(0, 3).map(tag => (
+                <span key={tag} style={{
+                  background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.25)",
+                  borderRadius: "4px", padding: "1px 6px",
+                  color: "#FFD700", fontSize: "0.62rem",
+                  fontFamily: "Exo 2, sans-serif",
+                }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="card-footer">
+            <div className="card-meta">
+              <span>📚 {(game.levels ?? []).length} levels</span>
+              <span>❓ {(game.questions ?? []).length} questions</span>
+            </div>
+            <button className="btn-play"
+              onClick={e => { e.stopPropagation(); onPlay(game) }}>
+              Play →
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
