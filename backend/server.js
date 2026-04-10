@@ -29,6 +29,11 @@ const app    = express()
 const server = createServer(app)
 const PORT   = process.env.PORT ?? 3001
 
+// ── Trust Render / Vercel reverse proxy ──────────────────────────────────────
+// Render sits behind a proxy that sets X-Forwarded-For.
+// Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+app.set("trust proxy", 1)
+
 // ── CORS origins ──────────────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = [
   "http://localhost:5173",
