@@ -284,7 +284,7 @@ export const SplashScreen: React.FC<Props> = ({ onComplete }) => {
         transition: "opacity 0.8s 0.3s",
         whiteSpace: "nowrap",
       }}>
-        Hackathon Build · 2025
+        Hackathon Build · 2026
       </div>
 
       {/* ── All splash-specific keyframes ── */}
