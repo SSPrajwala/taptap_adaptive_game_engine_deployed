@@ -1094,15 +1094,15 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
             <h3 className="admin-section-title" style={{ marginTop: "20px" }}>Scoring</h3>
 
             <Label required>Base Points per Question</Label>
-            <input className="admin-input" type="number" value={game.scoring.basePoints}
+            <input className="admin-input" type="number" value={game.scoring?.basePoints ?? 100}
               onChange={e => updateGame({ ...game, scoring: { ...game.scoring, basePoints: +e.target.value } })} />
 
             <Label required>Streak Threshold</Label>
-            <input className="admin-input" type="number" value={game.scoring.streakThreshold}
+            <input className="admin-input" type="number" value={game.scoring?.streakThreshold ?? 3}
               onChange={e => updateGame({ ...game, scoring: { ...game.scoring, streakThreshold: +e.target.value } })} />
 
             <Label required>Streak Multiplier</Label>
-            <input className="admin-input" type="number" step="0.1" value={game.scoring.streakMultiplierValue}
+            <input className="admin-input" type="number" step="0.1" value={game.scoring?.streakMultiplierValue ?? 1.5}
               onChange={e => updateGame({ ...game, scoring: { ...game.scoring, streakMultiplierValue: +e.target.value } })} />
 
             <h3 className="admin-section-title" style={{ marginTop: "20px" }}>UI Options</h3>
