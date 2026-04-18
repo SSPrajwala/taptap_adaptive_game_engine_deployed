@@ -37,7 +37,12 @@ app.set("trust proxy", 1)
 // ── CORS origins ──────────────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = [
   "http://localhost:5173",
+  "http://localhost:3000",
   "http://127.0.0.1:5173",
+  // Vercel deployments — hardcoded as fallback in case FRONTEND_URL env var is missing
+  "https://taptapgameengine-s-s-prajwala.vercel.app",
+  "https://project-yxc3b.vercel.app",
+  // Dynamic env var — set this in Render to allow any custom domain
   process.env.FRONTEND_URL,
 ].filter(Boolean)
 
